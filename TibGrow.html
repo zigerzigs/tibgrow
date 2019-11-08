@@ -571,6 +571,8 @@
 		canvas.style.visibility = "visible";
 		side_menu.style.visibility = "visible";
 		adjustSize(); //Updates the canvas to use the new map size.	
+		update_side_menu("magnify");
+		update_side_menu("tiberium");
 		
 		setInterval("gameCycle()", time_per_frame);
 
