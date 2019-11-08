@@ -75,6 +75,11 @@
 	var game_state = "uninitialized";
 //End Early Variable Declaration
 
+/*
+Code by ziger (zigerzigs@gmail.com)
+For personal and educational use only.
+*/
+
 // onload="function()" can be used with any html element to trigger a function call when its contents (even image files) finish downloading and loading.
 //Use this to create interesting loading screens.
 
@@ -256,7 +261,44 @@
 			console.log("debri count: " + debri_count);
 			for(var i = 0; i < debri_count; i++){
 				var placable = "false";
-				var debri = tiles.terrain.debri[tiles.terrain.debri.length];
+				var debri = tiles.terrain.debri[rand(tiles.terrain.debri.length)];
+				var tmpx, tmpy, tmpmaxx, tmpmaxy;
+				while(placable == "false"){
+					tmpx = rand(map.size.x - debri.size.x);
+					tmpy = rand(map.size.y - debri.size.y);
+					tmpmaxy = tmpy + debri.size.y;
+					tmpmaxx = tmpx + debri.size.x;
+					var blocked = "false";
+					for(var y = 0; y+tmpy < tmpmaxy; y++){
+						for(var x = 0; x+tmpx < tmpmaxx; x++){
+							if(map.tiles[y+tmpy][x+tmpx].type != "grass"){
+								blocked = "true";
+							}
+						}
+					}
+					if(blocked == "false"){
+						try_count.current = 0;
+						placable = "true";
+					} else {
+						if(try_count.current == try_count.max){
+							try_count.current = -1;
+							break;
+						}
+					}
+					try_count.current++;
+				}
+				if(try_count.current == -1){
+					try_count.current = 0;
+					console.log("skipped debri, no space");
+				} else {
+					for(var y = 0; y+tmpy < tmpmaxy; y++){
+						for(var x = 0; x+tmpx < tmpmaxx; x++){
+							map.tiles[y+tmpy][x+tmpx].type = "debri";
+							map.tiles[y+tmpy][x+tmpx].tileimg = debri.tiles[y][x];
+							map.tiles[y+tmpy][x+tmpx].open = debri.open[y][x];
+						}
+					}
+				}
 			}
 			
 			//Rocks
