@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<title>TibGrow</title>
+</head>
+
+<body style="background-color:black; color:green;font-family: Consolas;">
+
+<!-- Opening Scene -->
+	<div id="opening_scene">
+		
+	</div>
+<!-- End Opening Scene -->
+
+<!--	Main Menu	-->
+	<div id="Menu" style="height:0px;width:0px;padding-left:3px; visibility:hidden; background-image:url('options1.png'),url('options2.png'),url('btexture0001.png');background-position:right top, left top, left top; background-repeat:no-repeat, no-repeat, repeat; position:fixed;left:100px;top:10px;border: 5px ridge grey; overflow:hidden;transition: all 1.5s;">
+		<p><center><u>Options</u></center></p>
+		Template:
+		<select id="Template" onchange="template_selection_updated()">
+			<option id="select" value="select">Select Template</option>
+			<option id="debug" value="debug" disabled>Debug</option>
+			<option id="placeholder" value="placeholder" disabled>Place Holder</option>
+			<option id="temperate" value="temperate" disabled>Temperate</option>
+			<option id="desert" value="desert" disabled>Desert</option>
+		</select>
+		<button type="button" id="start_button" onclick="validate_input()" disabled>Submit</button>
+		<div id="temperate_input" style="visibility:hidden">
+			Size (WxH): <input id="tile_width" size="1" value="100"></input> x <input id="tile_height" size="1" value="75"></input> tiles <span id="temperate_size_ast" style="color:red;visibility:hidden;">*</span>
+			</br>
+			Growth Tick Rate: <input id="grow-rate" size="1" value="3" > seconds</input> <span id="temperate_tick_ast" style="color:red;visibility:hidden;">*</span>
+			</br>
+			Growth per Tick: <input id="node-rate" size="1" value="1" > nodes</input> <span id="temperate_grow_rate_ast" style="color:red;visibility:hidden;">*</span>
+			</br>
+			Existing Tib Grow Rate: <input id="grow-chance" size="1" value="80"> %</input> <span id="temperate_e_rate_ast" style="color:red;visibility:hidden;">*</span>
+			</br>
+			<span id="temperate_error_message" style="color:red;visibility:hidden;">One or more values are invalid. They have been marked with an *</span>
+		</div>
+	</div>
+<!--	Main Menu End -->
+
+
+<!--	Canvas	-->	
+	<canvas id="canvas" style="background-color:ivory; position:fixed; height:600px;width:900px; visibility:hidden;" ></canvas>
+	<canvas id="buffer_canvas" style="visibility:hidden; position:fixed;"></canvas>
+<!--	Canvas End	-->
+
+<!--	Right Side Menu	-->
+	<div id="side_menu" style="background-image:url('btexture0001.png'); border: 5px ridge grey; position:fixed; width:10%; visibility:hidden; padding-left:3px;">
+		<center><u>Options</u></center>
+		Zoom: <span id="opt_magnification"></span><br>
+		<br>
+		<center><u>Tiberium</u></center>
+		total: <span id="tib_total"></span><br>
+		Mature: <span id="tib_mature"></span><br>
+		Growing: <span id="tib_growing"></span><br>
+		Coverage: <span id="tib_coverage"></span><br>
+		
+	</div>
+<!--	Right Side Menu End	-->
+
+<!--	Assets	-->
+	<div id="invisible">
+		<img id="tmptiles" src="tmp.png" style="display:none"/>
+		<img id="temperatetiles" src="temperateX24.png" style="display:none"/>
+		<img id="uisprites" src="ui.png" style="display:none"/>
+	</div>
+<!-- Assets End	-->
+</body>
+
+<script>
+//Early Variable Declaration
+	var loaded = {ui:"not loaded", debug:"not loaded", temperate:"not loaded"};
+	var game_state = "uninitialized";
+//End Early Variable Declaration
+
+// onload="function()" can be used with any html element to trigger a function call when its contents (even image files) finish downloading and loading.
+//Use this to create interesting loading screens.
+
+// oninput="function()" can be used to validate input and update things as the user inputs things.
+
+//HTML Elements
+	var menu = document.getElementById("Menu");
+	var canvas = document.getElementById("canvas");
+	var buffer_canvas = document.getElementById("buffer_canvas");
+	var debug_image = document.getElementById("tmptiles");
+	var temperate_image = document.getElementById("temperatetiles");
+	var ui_image = document.getElementById("uisprites");
+	var opening = document.getElementById("opening_scene");
+	var side_menu = document.getElementById("side_menu");
+		
+		side_menu.magnify = document.getElementById("opt_magnification");
+		side_menu.total = document.getElementById("tib_total");
+		side_menu.mature = document.getElementById("tib_mature");
+		side_menu.growing = document.getElementById("tib_growing");
+		side_menu.coverage = document.getElementById("tib_coverage");
+
+	menu.selected_template = document.getElementById("Template");
+	menu.templates = {};
+	menu.templates.debug = document.getElementById("debug");
+	menu.templates.placeholder = document.getElementById("placeholder");
+	menu.templates.temperate = document.getElementById("temperate");
+	menu.temperate = document.getElementById("temperate_input");
+	menu.temperate.size_asterisk = document.getElementById("temperate_size_ast");
+	menu.temperate.growth_rate_asterisk = document.getElementById("temperate_grow_rate_ast");
+	menu.temperate.tick_rate_asterisk = document.getElementById("temperate_tick_ast");
+	menu.temperate.existing_tib_grow_rate_asterisk = document.getElementById("temperate_e_rate_ast");
+	menu.temperate.error_message = document.getElementById("temperate_error_message");
+	
+	
+	menu.selected_width = document.getElementById("tile_width");
+	menu.selected_height = document.getElementById("tile_height");
+	menu.selected_tick_rate = document.getElementById("grow-rate");
+	menu.selected_node_rate = document.getElementById("node-rate");
+	menu.selected_grow_rate = document.getElementById("grow-chance");
+	menu.start_button = document.getElementById("start_button");
+	
+		ui_image.onload = asset_loaded("ui");
+		debug_image.onload = asset_loaded("debug");
+		temperate_image.onload = asset_loaded("temperate");
+//End HTML Elements
+
+//Program Variables
+	var dimensions = {opening:{x:300,y:0},select:{x:300,y:100},temperate:{x:300,y:200}};
+	var px = "px";
+	var twod = canvas.getContext("2d");
+	var buffer_twod = buffer_canvas.getContext("2d");
+	var tickcount = 0;
+	var time_per_frame = 33;
+	
+	var keymap = {};
+	keymap.scroll = ["w","a","s","d"];
+	
+	
+	var sprites;
+	var tiles = {size:30}
+	var tib = {};
+	
+	var map = {
+				size:{x:0,y:0,total:0},
+				offset:{left:5,right:5,top:5,bottom:5},
+				tiles:[[{}]],
+				decorations:{},
+				entities:{},
+				magnify:1
+			};
+			
+	var view = {
+				size:{height:0,width:0,height_overflow:0,width_overflow:0},
+				loc:{x:0,y:0},
+				pxloc:{x:0,y:0},
+				scroll:{active:{},velocity:{},enabled:1},
+				mode:"free"
+			}
+		view.scroll.active = {up:"false",down:"false",left:"false",right:"false"};
+		view.scroll.velocity = {up:0,down:0,left:0,right:0,max:15};
+//End Program Variables
+
+//Templates
+
+	var place_holder = {tiles:{}, tib:{}, sprites:debug_image};
+		place_holder.tib = {time_to_grow:0,nodes_to_grow:0,chance_to_grow:0,img:[],prefix:"tib-",list:{growing:[],edges:[],all:[]},max:2,min:0,img:[[]]};
+		place_holder.tib.img[0] = [{x:0,y:1},{x:1,y:1},{x:2,y:1}];
+		place_holder.tile = {size:30,img:{}};
+		place_holder.tile.img = {grass:[{x:0,y:0}],sand:[{x:1,y:0}],rock:[{x:2,y:0}]};
+		place_holder.tile.newTile = function(i){
+				switch(i){
+				case 1: //Grass
+					var tile = {type:"grass",loc:{x:0,y:0},tilever:0,tileimg:place_holder.tile.img.grass[0],tib:-1,tibver:0};
+					return tile;
+					break;
+				case 2: //Sand
+					var tile = {type:"sand",loc:{x:0,y:0},tilever:0,tileimg:place_holder.tile.img.sand[0],tib:-1,tibver:0};
+					return tile;
+					break;
+				case 3: //Rock
+					var tile = {type:"rock",loc:{x:0,y:0},tilever:0,tileimg:place_holder.tile.img.rock[0],tib:-1,tibver:0};
+					return tile;
+					break;
+				default: //Default to Grass
+					var tile = {type:"grass",loc:{x:0,y:0},tilever:0,tileimg:place_holder.tile.img.grass[0],tib:-1,tibver:0};
+					return tile;
+				}
+			};
+	
+	var temperate = {tiles:{}, tib:{}, decorations:{}, sprites:temperate_image};	
+		temperate.tib = {time_to_grow:0,nodes_to_grow:0,chance_to_grow:0,img:[],prefix:"tib-",list:{growing:[],edges:[],all:[]},max:11,min:0,img:[[]]};
+		temperate.tib.img[0]  = [{x:0,y:1},{x:1,y:1},{x:2,y:1},{x:3,y:1},{x:4,y:1},{x:5,y:1},{x:6,y:1},{x:7,y:1},{x:8,y:1},{x:9,y:1},{x:10,y:1},{x:11,y:1}];
+		temperate.tib.img[1]  = [{x:0,y:2},{x:1,y:2},{x:2,y:2},{x:3,y:2},{x:4,y:2},{x:5,y:2},{x:6,y:2},{x:7,y:2},{x:8,y:2},{x:9,y:2},{x:10,y:2},{x:11,y:2}];
+		temperate.tib.img[2]  = [{x:0,y:3},{x:1,y:3},{x:2,y:3},{x:3,y:3},{x:4,y:3},{x:5,y:3},{x:6,y:3},{x:7,y:3},{x:8,y:3},{x:9,y:3},{x:10,y:3},{x:11,y:3}];
+		temperate.tib.img[3]  = [{x:0,y:4},{x:1,y:4},{x:2,y:4},{x:3,y:4},{x:4,y:4},{x:5,y:4},{x:6,y:4},{x:7,y:4},{x:8,y:4},{x:9,y:4},{x:10,y:4},{x:11,y:4}];
+		temperate.tib.img[4]  = [{x:0,y:5},{x:1,y:5},{x:2,y:5},{x:3,y:5},{x:4,y:5},{x:5,y:5},{x:6,y:5},{x:7,y:5},{x:8,y:5},{x:9,y:5},{x:10,y:5},{x:11,y:5}];
+		temperate.tib.img[5]  = [{x:0,y:6},{x:1,y:6},{x:2,y:6},{x:3,y:6},{x:4,y:6},{x:5,y:6},{x:6,y:6},{x:7,y:6},{x:8,y:6},{x:9,y:6},{x:10,y:6},{x:11,y:6}];
+		temperate.tib.img[6]  = [{x:0,y:7},{x:1,y:7},{x:2,y:7},{x:3,y:7},{x:4,y:7},{x:5,y:7},{x:6,y:7},{x:7,y:7},{x:8,y:7},{x:9,y:7},{x:10,y:7},{x:11,y:7}];
+		temperate.tib.img[7]  = [{x:0,y:8},{x:1,y:8},{x:2,y:8},{x:3,y:8},{x:4,y:8},{x:5,y:8},{x:6,y:8},{x:7,y:8},{x:8,y:8},{x:9,y:8},{x:10,y:8},{x:11,y:8}];
+		temperate.tib.img[8]  = [{x:0,y:9},{x:1,y:9},{x:2,y:9},{x:3,y:9},{x:4,y:9},{x:5,y:9},{x:6,y:9},{x:7,y:9},{x:8,y:9},{x:9,y:9},{x:10,y:9},{x:11,y:9}];
+		temperate.tib.img[9]  = [{x:0,y:10},{x:1,y:10},{x:2,y:10},{x:3,y:10},{x:4,y:10},{x:5,y:10},{x:6,y:10},{x:7,y:10},{x:8,y:10},{x:9,y:10},{x:10,y:10},{x:11,y:10}];
+		temperate.tib.img[10] = [{x:0,y:11},{x:1,y:11},{x:2,y:11},{x:3,y:11},{x:4,y:11},{x:5,y:11},{x:6,y:11},{x:7,y:11},{x:8,y:11},{x:9,y:11},{x:10,y:11},{x:11,y:11}];
+		temperate.tib.img[11] = [{x:0,y:12},{x:1,y:12},{x:2,y:12},{x:3,y:12},{x:4,y:12},{x:5,y:12},{x:6,y:12},{x:7,y:12},{x:8,y:12},{x:9,y:12},{x:10,y:12},{x:11,y:12}];
+		temperate.tile = {size:24,img:[],terrain:[]};
+		temperate.tile.img = [];
+		temperate.tile.img["grass"] = [{x:0,y:0},{x:1,y:0},{x:2,y:0},{x:3,y:0},{x:4,y:0},{x:5,y:0},{x:6,y:0},{x:7,y:0},{x:8,y:0},{x:9,y:0},{x:10,y:0},{x:11,y:0}];
+		
+		temperate.tile.terrain["rock"] = [
+			{size:{x:1,y:1},tiles:[[{x:3,y:18}]],open:[["no"]]},
+			{size:{x:2,y:1},tiles:[[{x:12,y:1},{x:13,y:1}]],open:[["no","no"]]},
+			{size:{x:3,y:1},tiles:[[{x:0,y:17},{x:1,y:17},{x:2,y:17}]],open:[["no","no","no"]]}
+			];
+		temperate.tile.terrain["debri"] = [
+			{size:{x:1,y:1},tiles:[[{x:12,y:5}]],open:[["yes"]]},
+			{size:{x:1,y:1},tiles:[[{x:13,y:5}]],open:[["yes"]]},
+			{size:{x:1,y:1},tiles:[[{x:3,y:13}]],open:[["yes"]]},
+			{size:{x:1,y:1},tiles:[[{x:0,y:22}]],open:[["yes"]]},
+			{size:{x:2,y:1},tiles:[[{x:1,y:22},{x:2,y:22}]],open:[["yes","yes"]]},
+			{size:{x:3,y:2},tiles:[[{x:12,y:9},{x:13,y:9},{x:14,y:9}],[{x:12,y:10},{x:13,y:10},{x:14,y:10}]],open:[["yes","yes","yes"],["yes","yes","yes"]]}
+			];
+		
+		temperate.tile.newTile = function(i){
+				var tile;
+				var random_tile_version;
+				var random_tib_version;
+				
+				switch(i){
+				case 1: //Grass
+					random_tile_version = rand(temperate.tile.img.grass.length);
+					random_tib_version = rand(temperate.tib.img.length);
+					tile = {type:"grass",loc:{x:0,y:0},tileimg:temperate.tile.img.grass[random_tile_version],tib:-1,tibver:random_tib_version,open:"yes"};
+					break;
+				default: //Grass
+					random_tile_version = rand(temperate.tile.img.grass.length);
+					random_tib_version = rand(temperate.tib.img.length);
+					tile = {type:"grass",loc:{x:0,y:0},tileimg:temperate.tile.img.grass[random_tile_version],tib:-1,tibver:random_tib_version,open:"yes"};
+					break;
+				}
+				
+				return tile;
+			
+			};
+		
+		temperate.tile.gen_map = function(){
+			var try_count = {current:0,max:10};
+		//Add Ridges
+			
+		//Add Rivers
+			
+		//Add Roads
+			
+		//Add Villages
+			
+		//Add Trees
+			
+		//Add Decorations
+			//Debri
+			var debri_count = rand(10);
+			console.log("debri count: " + debri_count);
+			for(var i = 0; i < debri_count; i++){
+				var placable = "false";
+				var debri = tiles.terrain.debri[tiles.terrain.debri.length];
+			}
+			
+			//Rocks
+			var rock_count = rand(10);
+			console.log("rock count: " + rock_count);
+			for(var i = 0; i < rock_count; i++){
+				var placable = "false";
+				var rock = tiles.terrain.rock[rand(tiles.terrain.rock.length)];
+				var tmpx, tmpy, tmpmaxx, tmpmaxy;
+				while(placable == "false"){
+					tmpx = rand(map.size.x - rock.size.x);
+					tmpy = rand(map.size.y - rock.size.y);
+					tmpmaxy = tmpy + rock.size.y;
+					tmpmaxx = tmpx + rock.size.x;
+					var blocked = "false";
+					
+					for(var y = 0; y+tmpy < tmpmaxy; y++){
+						for(var x = 0; x+tmpx < tmpmaxx; x++){
+							if(map.tiles[y+tmpy][x+tmpx].type != "grass"){
+								blocked = "true";
+							}
+						}
+					}
+					if(blocked == "false"){
+						try_count.current = 0;
+						placable = "true";
+					} else {
+						if(try_count.current == try_count.max){
+							try_count.current = -1;
+							break;
+						}
+					}
+					try_count.current++;
+				}
+				
+				if(try_count.current == -1){
+					try_count.current = 0;
+					console.log("skipped rock, no space");
+				} else {
+					for(var y = 0; y+tmpy < tmpmaxy; y++){
+						for(var x = 0; x+tmpx < tmpmaxx; x++){
+							map.tiles[y+tmpy][x+tmpx].type = "rock";
+							map.tiles[y+tmpy][x+tmpx].tileimg = rock.tiles[y][x];
+							map.tiles[y+tmpy][x+tmpx].open = rock.open[y][x];
+						}
+					}
+				}
+			}
+		}
+		
+		temperate.validate_input = function(){
+			//If either Width or Height is not a number
+			var check = {size:"false",g_rate:"false",t_rate:"false",e_rate:"false"};
+			if(Number.isInteger(Number(menu.selected_width.value)) && Number.isInteger(Number(menu.selected_height.value))){
+				menu.temperate.size_asterisk.style.visibility = "hidden";
+				check.size = "true";
+			} else {
+				menu.temperate.size_asterisk.style.visibility = "visible";
+				check.size = "false";
+			}
+			//If tick rate is a whole number
+			if(Number.isInteger(Number(menu.selected_tick_rate.value))){
+				menu.temperate.tick_rate_asterisk.style.visibility = "hidden";
+				check.t_rate = "true";
+			} else {
+				menu.temperate.tick_rate_asterisk.style.visibility = "visible";
+				check.t_rate = "false";
+			}
+			//if growth per tick rate is a whole number
+			if(Number.isInteger(Number(menu.selected_node_rate.value))){
+				menu.temperate.growth_rate_asterisk.style.visibility = "hidden";
+				check.g_rate = "true";
+			} else {
+				menu.temperate.growth_rate_asterisk.style.visibility = "visible";
+				check.g_rate = "false";
+			}
+			//if existing tib grow rate is a whole number
+			if(Number.isInteger(Number(menu.selected_grow_rate.value))){
+				menu.temperate.existing_tib_grow_rate_asterisk.style.visibility = "hidden";
+				check.e_rate = "true";
+			} else {
+				menu.temperate.existing_tib_grow_rate_asterisk.style.visibility = "visible";
+				check.e_rate = "false";
+			}
+			
+			if(Object.values(check).includes("false")){
+				menu.temperate.error_message.style.visibility = "visible";
+				return "false";
+			} else {
+				menu.temperate.error_message.style.visibility = "hidden";
+				return "true";
+			}
+			
+		}
+		
+	var debugmap = [
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,3,3,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,3,3,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,2,3,2,1,1,1,1,3,3,3,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+				[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+				];
+
+//End Templates
+
+//Event Handlers
+	window.addEventListener("resize", resizeHandler, false);
+	function resizeHandler(e){adjustSize();}
+	
+	window.addEventListener("keydown", keyDownHandler, false);
+	window.addEventListener("keyup", keyUpHandler, false);
+	function keyDownHandler(e){
+		if(canvas.style.visibility == "visible"){
+			if(keymap.scroll.includes(e.key)){ scroll(e.key, "pressed"); }
+		}
+		if(e.key == "0"){
+			//Debug messages for on demand console logging go here
+			
+		}
+	}
+	function keyUpHandler(e){
+		if(canvas.style.visibility == "visible"){
+			if(keymap.scroll.includes(e.key)){ scroll(e.key, "released"); }
+		}
+	}
+	
+	document.addEventListener("wheel", mouseHandler, false);
+	function mouseHandler(e){
+		if(game_state == "play"){
+			if(e.deltaY > 0){
+				if(map.magnify > 0.5){
+					map.magnify = Math.round((map.magnify - 0.1)*10)/10;
+					adjustSize();
+					update_side_menu("magnify");
+				}
+			} else if(e.deltaY < 0){
+				if(map.magnify < 2){
+					map.magnify = Math.round((map.magnify + 0.1)*10)/10;
+					adjustSize();
+					update_side_menu("magnify");
+				}
+			}
+		}
+	}
+	
+	function template_selection_updated(){
+		if(menu.selected_template.value == "temperate"){
+			menu.temperate.style.visibility = "visible";
+			menu.style.height = dimensions.temperate.y + px;
+			menu.style.width = dimensions.temperate.x + px;
+			adjustSize();
+			menu.start_button.disabled = false;
+		} else {
+			menu.style.height = dimensions.select.y + px;
+			menu.style.width = dimensions.select.x + px
+			adjustSize();
+			menu.start_button.disabled = true;
+		}
+	}
+	
+//End Event Handlers
+
+//Functions
+	function adjustSize(){ //Adjust the view space to fit 90% of the screen
+		if(game_state == "opening"){
+			menu.style.left = Math.floor(window.innerWidth*0.5)+px;
+			menu.style.top = Math.floor(window.innerHeight*0.5)+px;
+		} else if(game_state == "menu"){
+			menu.style.left = Math.floor((window.innerWidth - dimensions[menu.selected_template.value].x)*0.5) + px;
+			menu.style.top = Math.floor((window.innerHeight - dimensions[menu.selected_template.value].y)*0.5)+ px;
+		} else if(game_state == "play"){
+			side_menu.style.top = 10 + px;
+			side_menu.style.left = (window.innerWidth - 163) + px;
+			side_menu.style.height = (window.innerHeight - 30) + px;
+			side_menu.style.width = 150 + px;
+			
+			canvas.style.top = 10 + px;
+			canvas.style.height = (window.innerHeight - 20) + px;
+			canvas.style.width = (window.innerWidth - 171) + px;	
+			
+			twod.canvas.height = Math.floor((window.innerHeight - 20)/map.magnify);
+			twod.canvas.width = Math.floor((window.innerWidth * 0.9)/map.magnify);	
+			
+			view.size.height = Math.floor(twod.canvas.height / (tiles.size));
+			view.size.width = Math.floor(twod.canvas.width / (tiles.size));
+			
+			
+			buffer_canvas.style.height = (view.size.height+1) * (tiles.size) + px;
+			buffer_canvas.style.width  = (view.size.width+1) * (tiles.size) + px;
+			buffer_twod.canvas.height = (view.size.height+1) * (tiles.size);
+			buffer_twod.canvas.width = (view.size.width+1) * (tiles.size);
+
+		
+			updateview(0,"reset");
+			drawmap();
+			copybuffer();
+		}
+	}
+	
+	function asset_loaded(asset_name){
+		switch (asset_name){
+			case "ui":
+				loaded.ui = "loaded";
+				//menu.style.visibility = "visible";
+				break;
+			case "debug":
+				loaded.debug = "loaded";
+				menu.templates.debug.disabled = false;
+				menu.templates.placeholder.disabled = false;
+				break;
+			case "temperate":
+				loaded.temperate = "loaded";
+				menu.templates.temperate.disabled = false;
+				break;
+		}
+	}
+	
+	function scroll(input, action){
+		var direction = "DEBUG";
+		if(input == "w"){
+			direction = "up";
+		} else if (input == "a"){
+			direction = "left";
+		} else if (input == "s"){
+			direction = "down";
+		} else if (input == "d"){
+			direction = "right";
+		}
+		
+		if(action == "pressed"){
+			view.scroll.active[direction] = "true";
+		} else if(action == "released"){
+			view.scroll.active[direction] = "false";
+		} else{console.log("Unexpected value in scroll, direction")};
+	}
+	
+	function validate_input(){
+		var template_input_is_correct = "false";
+		if(menu.selected_template.value == "temperate"){
+			template_input_is_correct = temperate.validate_input();
+		}
+		
+		if(template_input_is_correct == "true"){
+			start();
+		}
+	}
+	
+	function start(){
+	//Hide menu
+		menu.style.display = "none";
+		game_state = "play";
+	//Take in the selected map creation information
+		var template = menu.selected_template.value;
+		map.size.x = menu.selected_width.value;
+		map.size.y = menu.selected_height.value;
+		map.size.total = map.size.x * map.size.y;
+		
+		if(template == "debug"){
+			map.size.x = 40;
+			map.size.y = 30;
+			map.size.total = 1200;
+		}
+		
+		if(template == "placeholder" || template == "debug"){
+			tib = place_holder.tib;
+			tiles = place_holder.tile;
+			sprites = place_holder.sprites;
+		} else if (template == "temperate"){
+			tib = temperate.tib;
+			tiles = temperate.tile;
+			sprites = temperate.sprites;
+		} else if (template == "desert"){
+			//Not implemented yet
+		}
+		
+		tib.time_to_grow  = Math.floor((menu.selected_tick_rate.value * 1000)/time_per_frame);
+		tib.nodes_to_grow = menu.selected_node_rate.value;
+		tib.chance_to_grow= menu.selected_grow_rate.value;
+		tib.tick_to_next  = 0;
+		
+		if(template == "debug"){
+			loadmap();
+		} else {
+			gen_map();
+		}
+			
+		canvas.style.visibility = "visible";
+		side_menu.style.visibility = "visible";
+		adjustSize(); //Updates the canvas to use the new map size.	
+		
+		setInterval("gameCycle()", time_per_frame);
+
+	}
+	
+	function gen_map(){
+		map.tiles = Array(map.size.y);
+		for(var y = 0; y < map.size.y; y++){
+			map.tiles[y] = Array(map.size.x);
+			for(var x = 0; x < map.size.x; x++){
+				map.tiles[y][x] = tiles.newTile(1);
+				map.tiles[y][x].loc.x = x;
+				map.tiles[y][x].loc.y = y;
+			}
+		}
+		tiles.gen_map();
+		
+		//To be removed and replaced
+		addtib(1,rand(map.size.x),rand(map.size.y));
+	}
+	
+	function loadmap(){
+		map.tiles = Array(map.size.y);
+		for(var y = 0; y < map.size.y; y++){
+			map.tiles[y] = Array(map.size.x);
+			for(var x = 0; x < map.size.x; x++){
+				map.tiles[y][x] = tiles.newTile(debugmap[y][x]);
+				map.tiles[y][x].loc.x = x;
+				map.tiles[y][x].loc.y = y;
+			}
+		}
+		addtib(1,12,12);
+	}
+	
+	function drawmap(){
+		for(var y = 0; y <= view.size.height; y++){
+			for(var x = 0; x <= view.size.width; x++){
+				if(y + view.loc.y < map.size.y && x + view.loc.x < map.size.x && x + view.loc.x >= 0 && y + view.loc.y >= 0){
+					drawtile(map.tiles[y+view.loc.y][x+view.loc.x],x,y);
+				} else {
+					drawfiller(x,y);
+				}
+			}
+		}
+	}
+	
+	function drawtile(tile, x, y){ 
+			//drawImage(img,subset-x,subset-y,subset-width,subset-height,x,y,width,height)
+		
+		//Draw terrain tile
+		buffer_twod.drawImage(sprites,tile.tileimg.x*tiles.size,tile.tileimg.y*tiles.size,tiles.size,tiles.size,(x*tiles.size),(y*tiles.size),tiles.size,tiles.size);
+		
+		//Draw decoration tile
+		
+		//Draw tib tile
+		if(tile.tib >= tib.min){
+			buffer_twod.drawImage(sprites,tib.img[tile.tibver][tile.tib].x*tiles.size,tib.img[tile.tibver][tile.tib].y*tiles.size,tiles.size,tiles.size,x*tiles.size,y*tiles.size,tiles.size,tiles.size);
+		}
+	}
+	
+	function drawfiller(x,y){
+		buffer_twod.beginPath();
+		buffer_twod.rect(x*tiles.size,y*tiles.size,tiles.size,tiles.size);
+		buffer_twod.fillStyle="black";
+		buffer_twod.fill();
+		buffer_twod.closePath();
+	}
+	
+	function copybuffer(){
+	//	twod.drawImage(buffer_canvas, view.pxloc.x, view.pxloc.y, twod.canvas.width, twod.canvas.height, 0, 0, view.size.width*tiles.size, view.size.height*tiles.size );
+		twod.drawImage(buffer_canvas, view.pxloc.x, view.pxloc.y, twod.canvas.width, twod.canvas.height, 0, 0, twod.canvas.width, twod.canvas.height );
+	}
+	
+	function rand(max){
+		return Math.floor(Math.random() * Math.floor(max));
+	}
+
+	function growtib(count){
+		for(var i = 0; i < count; i++){
+			//Weighted random pick between growing existing tib, and new tib
+			var random_number = rand(100);
+			if(random_number < tib.chance_to_grow){
+				random_number = 0;
+			} else {
+				random_number = 1;
+			}
+			
+			var lists = []; lists[0] = tib.list.growing; lists[1] = tib.list.edges;
+			var choice = lists[random_number];
+			
+			//If either list is empty, use the one with at least 1 entry. If both are empty, add tib at a random place.
+			if(Object.keys(tib.list.growing).length < 1 && Object.keys(tib.list.edges).length < 1){
+				return;
+			} else if(Object.keys(tib.list.growing).length < 1){
+				choice = lists[1];
+			} else if(Object.keys(tib.list.edges).length < 1){
+				choice = lists[0];
+			}
+			
+			//Random pick from that list
+			var tilelist = Object.keys(choice);
+			var targettile = choice[tilelist[rand(tilelist.length)]];
+			
+			//Increment tib, update lists if necessary
+			targettile.tib += 1;
+			
+			//Update lists
+			updatetiblist(targettile.loc.x,targettile.loc.y);
+			
+			//Update Side Menu
+			update_side_menu("tiberium");
+		}
+	}
+	
+	function addtib(level,x,y){
+		if(map.tiles[y][x].tib < tib.max){
+			if(map.tiles[y][x].tib+level < tib.max){
+				map.tiles[y][x].tib += level;
+			} else{
+				map.tiles[y][x].tib = tib.max;
+			}
+		}
+		updatetiblist(x,y);
+	}
+	
+	function removetib(level,x,y){
+		map.tiles[y][x].tib -= level;
+		updatetiblist(x,y);
+	}
+	
+	function updatetiblist(x,y){
+		if( y >= 0 && !(y >= map.tiles.length) && x >= 0 && !(x >= map.tiles[y].length)){
+			if(map.tiles[y][x].tib >= tib.min){//If tib, do:
+				if(!((tib.prefix + x + "-" + y) in tib.list.all)){//If not already in the all list, add it.
+					tib.list.all[tib.prefix + x + "-" + y] = map.tiles[y][x];
+				}
+				if(map.tiles[y][x].tib < tib.max && !((tib.prefix + x + "-" + y) in tib.list.growing)){//If less than max and not already in growing list, add to growing list.
+					tib.list.growing[tib.prefix + x + "-" + y] = map.tiles[y][x];
+				}
+				if(map.tiles[y][x].tib >= tib.max && (tib.prefix + x + "-" + y) in tib.list.growing){//If maxed and in growing list, remove from growing list.
+					delete tib.list.growing[tib.prefix + x + "-" + y]
+				}
+				for(var miny = y-1; miny <= y+1; miny++){ //check the surrounding tiles. Add to edges if empty.
+					if(miny >= 0 && miny < map.tiles.length ){
+						for(var minx = x-1; minx <= x+1; minx++){
+							if(minx >= 0 && minx < map.tiles[miny].length){
+								if(map.tiles[miny][minx].tib < tib.min && !((tib.prefix + minx + "-" + miny) in tib.list.edges)){
+									if(map.tiles[miny][minx].open == "yes"){
+										tib.list.edges[tib.prefix + minx + "-" + miny] = map.tiles[miny][minx];
+									}
+								}
+							}
+						}
+					}
+				}
+				if((tib.prefix + x + "-" + y) in tib.list.edges){
+					delete tib.list.edges[tib.prefix + x + "-" + y];
+				}
+			} else {//If no tib, remove from all, growing
+				if((tib.prefix + x + "-" + y) in tib.list.all){
+					delete tib.list.all[tib.prefix + x + "-" + y];
+					console.log("Deleted from All: " + tib.prefix + x + "-" + y);
+				}
+				if((tib.prefix + x + "-" + y) in tib.list.growing){
+					delete tib.list.growing[tib.prefix + x + "-" + y];
+					console.log("Deleted from Growing: "+ tib.prefix + x + "-" + y);
+				}
+				var isedge = "false";
+				for(var miny = y-1; miny <= y+1; miny++){
+					for(var minx = x-1; minx <= x+1; minx++){
+						if(map.tiles[miny][minx].tib < tib.min){isedge = "true";}				//Check each neighbor for tib. Mark true if found.
+					}
+				}
+				if(map.tiles[y][x].tib >= tib.min){isedge = "false";}									//Check target tile for tib. Mark false if found.
+				if(isedge == "true"){tib.list.edges[tib.prefix + x + "-" + y]; console.log("Edge found at: " + minx + "," + miny);}							//Delete from list if contains tib or has no tib neihbors.
+			}
+		} else {
+			console.log("Coord " + x + "," + y + " was outside of map limits.");
+		}
+	}
+	
+	function updateview(value, direction){
+		if(view.size.height > map.size.y){
+			view.loc.y = Math.floor((map.size.y - view.size.height)/2); 
+			view.pxloc.y = 0;
+		} else {
+			if(direction == "up"){
+				view.pxloc.y -= value;
+				if(view.pxloc.y < 0){view.loc.y -= 1; view.pxloc.y += tiles.size;}
+				if(view.loc.y < 0){view.loc.y = 0; view.pxloc.y = 0;}
+			} else 
+			if(direction == "down"){
+				view.pxloc.y += value;
+				if(view.pxloc.y >= tiles.size){view.loc.y += 1; view.pxloc.y -= tiles.size;}
+				if(view.loc.y >= map.size.y - view.size.height){view.loc.y = map.size.y - view.size.height; view.pxloc.y = 0;}
+			}
+		}
+		
+		if(view.size.width > map.size.x){
+			view.loc.x = Math.floor((map.size.x - view.size.width)/2); 
+			view.pxloc.x = 0;
+		} else {
+			if(direction == "left"){
+				view.pxloc.x -= value;
+				if(view.pxloc.x < 0){view.loc.x -= 1; view.pxloc.x += tiles.size;}
+				if(view.loc.x < 0){view.loc.x = 0; view.pxloc.x = 0;}
+			
+			} else if(direction == "right"){
+				view.pxloc.x += value;
+				if(view.pxloc.x > tiles.size){view.loc.x += 1; view.pxloc.x -= tiles.size;}
+				if(view.loc.x >= map.size.x - view.size.width){view.loc.x = map.size.x - view.size.width; view.pxloc.x = 0;}
+			}
+		}
+		
+		if(direction == "reset"){
+			if(view.size.height <= map.size.y){
+				if(view.loc.y >= map.size.y - view.size.height){
+					view.loc.y = map.size.y - view.size.height; 
+					view.pxloc.y = 0;
+				} else if(view.loc.y < 0){
+					view.loc.y = 0; 
+					view.pxloc.y = 0;
+				}
+			}
+			
+			if(view.size.width <= map.size.x){
+				if(view.loc.x >= map.size.x - view.size.width){
+					view.loc.x = map.size.x - view.size.width; 
+					view.pxloc.x = 0;
+				} else if(view.loc.x < 0){
+					view.loc.x = 0; 
+					view.pxloc.x = 0;
+				}
+			}
+		} 	
+	}
+	
+	function gameCycle(){
+		//Update entities
+		tib.tick_to_next += 1;
+		if(tib.tick_to_next >= tib.time_to_grow){
+			growtib(tib.nodes_to_grow);
+			tib.tick_to_next = 0;
+		}
+		
+		//Update view
+		for(key in view.scroll.active){
+			if(view.scroll.active[key] == "true" && view.scroll.velocity[key] < view.scroll.velocity.max){
+				view.scroll.velocity[key] += 1;
+			} else if (view.scroll.active[key] == "false" && view.scroll.velocity[key] > 0){
+				view.scroll.velocity[key] -= 1;
+			} else if (view.scroll.velocity[key] < 0){
+				view.scroll.velocity[key] = 0;
+			}
+		}
+		
+		if(view.scroll.velocity.up > 0){
+			updateview(view.scroll.velocity.up, "up");
+		}
+		if(view.scroll.velocity.down > 0){
+			updateview(view.scroll.velocity.down, "down");
+		}
+		if(view.scroll.velocity.left > 0){
+			updateview(view.scroll.velocity.left, "left");
+		}
+		if(view.scroll.velocity.right > 0){
+			updateview(view.scroll.velocity.right, "right");
+		}
+		
+		//Redraw
+		drawmap();
+		copybuffer();
+		
+		//Update Side Menu
+		//update_side_menu() //This has been moved to the functions that cause events that require updates to the side menu.
+		
+		//Increment tick count
+		if(tickcount > 30){ tickcount = 0; }
+		
+	}
+	
+	function update_side_menu(section){
+		if(section == "magnify"){
+			side_menu.magnify.innerHTML = map.magnify + "x";
+		} else
+		if(section == "tiberium"){
+			side_menu.total.innerHTML = Object.keys(tib.list.all).length;
+			side_menu.growing.innerHTML = Object.keys(tib.list.growing).length;
+			side_menu.mature.innerHTML = Object.keys(tib.list.all).length - Object.keys(tib.list.growing).length;
+			side_menu.coverage.innerHTML = Math.floor((Object.keys(tib.list.all).length/map.size.total)*100) + "%";
+		}
+	}
+	
+	function iterate_opening(){
+		switch(opening.count){
+			case 0:
+				opening.innerHTML = "Establishing connection, please standby...</br>";
+				opening.count++;
+				window.setTimeout(iterate_opening,1500);
+				break;
+			case 1:
+				opening.innerHTML += "Connection Established.</br>";
+				opening.count++;
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 2:
+				opening.innerHTML += "Welcome back, Commander.</br></br>";
+				opening.count++;
+				window.setTimeout(iterate_opening,2000);
+				break;
+			case 3:
+				opening.innerHTML += "Loading Tiberium Research and Topological Observatory Simulation data, please standby... </br>";
+				opening.count++;
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 4:
+				opening.innerHTML += "---Loading UI Elements";
+				opening.count++;
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 5:
+				if(opening.subcount < 5){
+					opening.innerHTML += ".";
+					opening.subcount++;
+				} else if(loaded.ui == "loaded"){
+					opening.subcount = 0;
+					opening.innerHTML += "done</br>";
+					opening.count++;
+				}
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 6:
+				opening.innerHTML += "---Loading Tiberium Profiles";
+				opening.count++;
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 7:
+				if(opening.subcount < 5){
+					opening.innerHTML += ".";
+					opening.subcount++;
+				} else if(loaded.debug == "loaded" && loaded.temperate == "loaded"){
+					opening.subcount = 0;
+					opening.innerHTML += "done</br>";
+					opening.count++;
+				}
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 8:
+				opening.innerHTML += "---Loading Historical Data";
+				opening.count++;
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 9:
+				if(opening.subcount < 5){
+					opening.innerHTML += ".";
+					opening.subcount++;
+				} else {
+					opening.subcount = 0;
+					opening.innerHTML += "done</br></br>";
+					opening.count++;
+				}
+				window.setTimeout(iterate_opening,500);
+				break;
+			case 10:
+				opening.innerHTML += "Initializing T.R.a.T.O.S., please standby...";
+				opening.count++;
+				window.setTimeout(iterate_opening,2000);
+				break;
+			case 11:
+				opening.style.visibility = "hidden";
+				game_state = "menu";
+				menu.style.visibility = "visible";
+				if(menu.selected_template.value == "temperate"){
+					expand_menu_width("temperate");
+				} else {
+					expand_menu_width("select");
+				}
+				
+		}
+	}
+	
+	function expand_menu_width(input){
+		menu.style.width = dimensions[input].x + px;
+		menu.style.left = Math.floor((window.innerWidth - dimensions.opening.x)*0.5) + px;
+		window.setTimeout(template_selection_updated,1500);
+	}
+	
+	function expand_menu_height(input){
+		menu.style.height = dimensions[input].y + px;
+	}
+	
+//End Functions
+
+//Setup
+	game_state = "opening";
+	adjustSize();
+	opening.count = 0;
+	opening.subcount = 0;
+	iterate_opening();
+//End Setup
+
+
+//Debug console logs
+
+//End Debug console logs
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
