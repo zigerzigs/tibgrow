@@ -33,7 +33,7 @@
 			</br>
 			Growth per Tick: <input id="node-rate" size="1" value="1" > nodes</input> <span id="temperate_grow_rate_ast" style="color:red;visibility:hidden;">*</span>
 			</br>
-			Existing Tib Grow Rate: <input id="grow-chance" size="1" value="80"> %</input> <span id="temperate_e_rate_ast" style="color:red;visibility:hidden;">*</span>
+			Existing Tib Grow Rate: <input id="grow-chance" size="1" value="85"> %</input> <span id="temperate_e_rate_ast" style="color:red;visibility:hidden;">*</span>
 			</br>
 			<span id="temperate_error_message" style="color:red;visibility:hidden;">One or more values are invalid. They have been marked with an *</span>
 		</div>
@@ -73,18 +73,19 @@
 //Early Variable Declaration
 	var loaded = {ui:"not loaded", debug:"not loaded", temperate:"not loaded"};
 	var game_state = "uninitialized";
+	var debug_state = "off";
 //End Early Variable Declaration
 
 /*
 Code by ziger (zigerzigs@gmail.com)
 For personal and educational use only.
-*/
+
 
 // onload="function()" can be used with any html element to trigger a function call when its contents (even image files) finish downloading and loading.
 //Use this to create interesting loading screens.
 
 // oninput="function()" can be used to validate input and update things as the user inputs things.
-
+*/
 //HTML Elements
 	var menu = document.getElementById("Menu");
 	var canvas = document.getElementById("canvas");
@@ -137,6 +138,7 @@ For personal and educational use only.
 	var keymap = {};
 	keymap.scroll = ["w","a","s","d"];
 	
+	twod.textBaseline="bottom";
 	
 	var sprites;
 	var tiles = {size:30}
@@ -152,7 +154,7 @@ For personal and educational use only.
 			};
 			
 	var view = {
-				size:{height:0,width:0,height_overflow:0,width_overflow:0},
+				size:{height:0,width:0,pxheight:0,pxwidth:0},
 				loc:{x:0,y:0},
 				pxloc:{x:0,y:0},
 				scroll:{active:{},velocity:{},enabled:1},
@@ -208,18 +210,80 @@ For personal and educational use only.
 		temperate.tile.img["grass"] = [{x:0,y:0},{x:1,y:0},{x:2,y:0},{x:3,y:0},{x:4,y:0},{x:5,y:0},{x:6,y:0},{x:7,y:0},{x:8,y:0},{x:9,y:0},{x:10,y:0},{x:11,y:0}];
 		
 		temperate.tile.terrain["rock"] = [
-			{size:{x:1,y:1},tiles:[[{x:3,y:18}]],open:[["no"]]},
-			{size:{x:2,y:1},tiles:[[{x:12,y:1},{x:13,y:1}]],open:[["no","no"]]},
-			{size:{x:3,y:1},tiles:[[{x:0,y:17},{x:1,y:17},{x:2,y:17}]],open:[["no","no","no"]]}
+			{size:{x:1,y:1},tiles:[[{x:3,y:18}]],open:[["no"]],skip:[["no"]]},
+			{size:{x:2,y:1},tiles:[[{x:12,y:1},{x:13,y:1}]],open:[["no","no"]],skip:[["no","no"]]},
+			{size:{x:3,y:1},tiles:[[{x:0,y:17},{x:1,y:17},{x:2,y:17}]],open:[["no","no","no"]],skip:[["no","no","no"]]}
 			];
 		temperate.tile.terrain["debri"] = [
-			{size:{x:1,y:1},tiles:[[{x:12,y:5}]],open:[["yes"]]},
-			{size:{x:1,y:1},tiles:[[{x:13,y:5}]],open:[["yes"]]},
-			{size:{x:1,y:1},tiles:[[{x:3,y:13}]],open:[["yes"]]},
-			{size:{x:1,y:1},tiles:[[{x:0,y:22}]],open:[["yes"]]},
-			{size:{x:2,y:1},tiles:[[{x:1,y:22},{x:2,y:22}]],open:[["yes","yes"]]},
-			{size:{x:3,y:2},tiles:[[{x:12,y:9},{x:13,y:9},{x:14,y:9}],[{x:12,y:10},{x:13,y:10},{x:14,y:10}]],open:[["yes","yes","yes"],["yes","yes","yes"]]}
+			{size:{x:1,y:1},tiles:[[{x:12,y:5}]],open:[["yes"]],skip:[["no"]]},
+			{size:{x:1,y:1},tiles:[[{x:13,y:5}]],open:[["yes"]],skip:[["no"]]},
+			{size:{x:1,y:1},tiles:[[{x:3,y:13}]],open:[["yes"]],skip:[["no"]]},
+			{size:{x:1,y:1},tiles:[[{x:0,y:22}]],open:[["yes"]],skip:[["no"]]},
+			{size:{x:2,y:1},tiles:[[{x:1,y:22},{x:2,y:22}]],open:[["yes","yes"]],skip:[["no","no"]]},
+			{size:{x:3,y:2},tiles:[[{x:12,y:9},{x:13,y:9},{x:14,y:9}],[{x:12,y:10},{x:13,y:10},{x:14,y:10}]],open:[["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","no"],["no","no","no"]]}
 			];
+		temperate.tile.terrain["road"] = {end:{}, straight:{}, diagonal:{}, curve:{}, multi:{}, diag_straight:{}};
+		temperate.tile.terrain.road.end = {
+			end_south:{size:{x:1,y:2},tiles:[[{x:15,y:9}],[{x:15,y:10}]],open:[["yes"],["yes"]],skip:[["no"],["no"]],offset:{south:{x:0,y:1}}}, //connects at the south
+			north_end:{size:{x:2,y:2},tiles:[[{},{x:15,y:11}],[{x:14,y:12},{x:15,y:12}]],open:[["","yes"],["yes","yes"]],skip:[["yes","no"],["no","no"]],offset:{north:{x:1,y:0}}}, //Connects at the north
+			end_east:{size:{x:2,y:2},tiles:[[{x:12,y:11},{x:13,y:11}],[{x:12,y:12},{x:13,y:12}]],open:[["yes","yes"],["yes","yes"]],skip:[["no","no"],["no","no"]],offset:{east:{x:1,y:0}}}, //Connects at the east
+			west_end:{size:{x:2,y:2},tiles:[[{},{x:15,y:13}],[{x:14,y:14},{x:15,y:14}]],open:[["","yes"],["yes","yes"]],skip:[["yes","no"],["no","no"]],offset:{west:{x:0,y:1}}} //connects at the west
+			};
+		temperate.tile.terrain.road.straight = {
+			north_south1:{size:{x:3,y:4},tiles:[[{},{x:13,y:13},{x:14,y:13}],[{x:12,y:14},{x:13,y:14},{}],[{x:12,y:15},{x:13,y:15},{}],[{x:12,y:16},{x:13,y:16},{}]],open:[["yes","yes","yes"],["yes","yes","yes"],["yes","yes","yes"],["yes","yes","yes"]],skip:[["yes","no","no"],["no","no","yes"],["no","no","yes"],["no","no","yes"]],offset:{north:{x:1,y:0},south:{x:1,y:3}}},
+			north_south2:{size:{x:2,y:3},tiles:[[{x:14,y:15},{}],[{x:14,y:16},{x:15,y:16}],[{x:14,y:17},{x:15,y:17}]],open:[["yes",""],["yes","yes"],["yes","yes"]],skip:[["no","yes"],["no","no"],["no","no"]],offset:{north:{x:0,y:0},south:{x:0,y:2}}},
+			north_south3:{size:{x:3,y:2},tiles:[[{x:9,y:13},{x:10,y:13},{x:11,y:13}],[{x:9,y:14},{x:10,y:14},{x:11,y:14}]],open:[["yes","yes","yes"],["","yes","yes"]],skip:[["no","no","no"],["yes","no","no"]],offset:{north:{x:1,y:0},south:{x:1,y:1}}},
+			north_south4:{size:{x:3,y:2},tiles:[[{},{x:14,y:21},{}],[{x:13,y:22},{x:14,y:22},{x:15,y:22}]],open:[["","yes",""],["yes","yes","yes"]],skip:[["yes","no","yes"],["no","no","no"]],offset:{north:{x:1,y:0},south:{x:1,y:1}}},
+			west_east1:{size:{x:4,y:3},tiles:[[{x:5,y:13},{x:6,y:13},{x:7,y:13},{x:8,y:13}],[{x:5,y:14},{x:6,y:14},{x:7,y:14},{x:8,y:14}],[{},{},{x:7,y:15},{x:8,y:15}]],open:[["yes","yes","yes","yes"],["yes","yes","yes","yes"],["","","yes","yes"]],skip:[["no","no","no","no"],["no","no","no","no"],["","","no","no"]],offset:{west:{x:0,y:1},east:{x:3,y:1}}},
+			west_east2:{size:{x:4,y:2},tiles:[[{x:5,y:15},{x:6,y:15},{},{}],[{x:5,y:16},{x:6,y:16},{x:7,y:16},{x:8,y:16}]],open:[["yes","yes","",""],["yes","yes","yes","yes"]],skip:[["no","no","yes","yes"],["no","no","no","no"]],offset:{west:{x:0,y:1},east:{x:3,y:1}}},
+			west_east3:{size:{x:2,y:3},tiles:[[{},{x:15,y:19}],[{x:14,y:20},{x:15,y:20}],[{},{x:15,y:22}]],open:[["","yes"],["yes","yes"],["","yes"]],skip:[["yes","no"],["no","no"],["yes","no"]],offset:{west:{x:0,y:1},east:{x:1,y:1}}},
+			west_east4:{size:{x:2,y:2},tiles:[[{x:9,y:14},{}],[{x:9,y:15},{x:10,y:15}]],open:[["yes",""],["yes","yes"]],skip:[["no","yes"],["no","no"]],offset:{west:{x:0,y:1},east:{x:1,y:1}}},
+			west_east5:{size:{x:4,y:3},tiles:[[{x:5,y:17},{x:6,y:17},{x:7,y:17},{}],[{x:5,y:18},{x:6,y:18},{x:7,y:18},{x:8,y:18}],[{},{},{x:7,y:19},{x:8,y:19}]],open:[["yes","yes","yes",""],["yes","yes","yes","yes"],["","","yes","yes"]],skip:[["no","no","no","yes"],["no","no","no","no"],["yes","yes","no","no"]],offset:{west:{x:0,y:0},east:{x:3,y:2}}}
+			};
+		temperate.tile.terrain.road.diagonal = {
+			northwest_southeast1:{size:{x:3,y:3},tiles:[[{x:16,y:5},{x:17,y:5},{}],[{x:16,y:6},{x:17,y:6},{x:18,y:6}],[{},{x:17,y:7},{x:18,y:7}]],open:[["yes","yes",""],["yes","yes","yes"],["","yes","yes"]],skip:[["no","no","yes"],["no","no","no"],["yes","no","no"]],offset:{northwest:{x:0,y:0},southeast:{x:2,y:2}}},
+			northwest_southeast2:{size:{x:3,y:3},tiles:[[{x:16,y:10},{x:17,y:10},{}],[{x:16,y:11},{x:17,y:11},{x:18,y:11}],[{},{x:17,y:12},{x:18,y:12}]],open:[["yes","yes",""],["yes","yes","yes"],["","yes","yes"]],skip:[["no","no","yes"],["no","no","no"],["yes","no","no"]],offset:{northwest:{x:0,y:0},southeast:{x:2,y:2}}},
+			northeast_southwest1:{size:{x:3,y:3},tiles:[[{},{x:19,y:14},{x:20,y:14}],[{x:18,y:15},{x:19,y:15},{x:20,y:15}],[{x:18,y:16},{x:19,y:16},{x:20,y:16}]],open:[["","yes","yes"],["yes","yes","yes"],["yes","yes",""]],skip:[["yes","no","no"],["no","no","no"],["no","no","yes"]],offset:{northeast:{x:2,y:0},southwest:{x:0,y:2}}},
+			northeast_southwest2:{size:{x:3,y:3},tiles:[[{},{x:18,y:12},{x:19,y:12}],[{x:17,y:13},{x:18,y:13},{x:19,y:13}],[{x:17,y:14},{x:18,y:14},{x:19,y:14}]],open:[["","yes","yes"],["yes","yes","yes"],["yes","yes",""]],skip:[["yes","no","no"],["no","no","no"],["no","no","yes"]],offset:{northeast:{x:2,y:0},southwest:{x:0,y:2}}},
+			nw_se_connector1:{size:{x:2,y:2},tiles:[[{},{x:9,y:16}],[{x:8,y:17},{}]],open:[["","yes"],["yes",""]],skip:[["yes","no"],["no","yes"]],offset:{northwest:{x:0,y:0},southeast:{x:1,y:1}}},
+			nw_se_connector2:{size:{x:2,y:2},tiles:[[{},{x:18,y:18}],[{x:17,y:19},{}]],open:[["","yes"],["yes",""]],skip:[["yes","no"],["no","yes"]],offset:{northwest:{x:0,y:0},southeast:{x:1,y:1}}},
+			ne_sw_connector1:{size:{x:2,y:2},tiles:[[{x:15,y:18},{}],[{},{x:16,y:19}]],open:[["yes",""],["","yes"]],skip:[["no","yes"],["yes","no"]],offset:{northeast:{x:1,y:0},southwest:{x:0,y:1}}},
+			ne_sw_connector2:{size:{x:2,y:2},tiles:[[{x:19,y:1},{}],[{},{x:20,y:2}]],open:[["yes",""],["","yes"]],skip:[["no","yes"],["yes","no"]],offset:{northeast:{x:1,y:0},southwest:{x:0,y:1}}}
+		};
+		temperate.tile.terrain.road.multi = {
+			north_west_east:{size:{x:3,y:3},tiles:[[{},{x:6,y:20},{x:7,y:20}],[{x:5,y:21},{x:6,y:21},{x:7,y:21}],[{x:5,y:22},{x:6,y:22},{x:7,y:22}]],open:[["","yes","yes"],["yes","yes","yes"],["yes","yes","yes"]],skip:[["yes","no","no"],["no","no","no"],["no","no","no"]],offset:{north:{x:2,y:0},west:{x:0,y:2},east:{x:2,y:2}}},
+			north_east_south1:{size:{x:3,y:3},tiles:[[{x:11,y:20},{x:12,y:20},{x:13,y:20}],[{x:11,y:21},{x:12,y:21},{x:13,y:21}],[{x:11,y:22},{x:12,y:22},{}]],open:[["yes","yes","yes"],["yes","yes","yes"],["yes","yes",""]],skip:[["no","no","no"],["no","no","no"],["no","no","yes"]],offset:{north:{x:0,y:0},east:{x:2,y:0},south:{x:0,y:2}}},
+			north_east_south2:{size:{x:3,y:3},tiles:[[{x:8,y:20},{x:9,y:20},{x:10,y:20}],[{x:8,y:21},{x:9,y:21},{x:10,y:21}],[{x:8,y:22},{x:9,y:22},{x:10,y:22}]],open:[["yes","yes","yes"],["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","no"],["no","no","no"],["no","no","no"]],offset:{north:{x:1,y:0},east:{x:2,y:1},south:{x:0,y:2}}},
+			west_east_south:{size:{x:3,y:2},tiles:[[{x:12,y:18},{x:13,y:18},{x:14,y:18}],[{x:12,y:19},{x:13,y:19},{x:14,y:19}]],open:[["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","no"],["no","no","no"]],offset:{west:{x:0,y:0},east:{x:2,y:0},south:{x:1,y:1}}},
+			north_west_south:{size:{x:3,y:3},tiles:[[{x:9,y:17},{x:10,y:17},{x:11,y:17}],[{x:9,y:18},{x:10,y:18},{x:11,y:18}],[{x:9,y:19},{x:10,y:19},{x:11,y:19}]],open:[["yes","yes","yes"],["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","no"],["no","no","no"],["no","no","no"]],offset:{north:{x:1,y:0},west:{x:0,y:1},south:{x:1,y:2}}},
+			north_west_east_south:{size:{x:3,y:3},tiles:[[{x:16,y:0},{x:17,y:0},{x:18,y:0}],[{x:16,y:1},{x:17,y:1},{x:18,y:1}],[{x:16,y:2},{x:17,y:2},{x:18,y:2}]],open:[["yes","yes","yes"],["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","no"],["no","no","no"],["no","no","no"]],offset:{north:{x:1,y:0},west:{x:0,y:1},east:{x:2,y:1},south:{x:1,y:2}}}
+		};
+		temperate.tile.terrain.road.curve = {
+			north_east:{size:{x:3,y:3},tiles:[[{x:16,y:20},{x:17,y:20},{x:18,y:20}],[{x:16,y:21},{x:17,y:21},{x:18,y:21}],[{x:16,y:22},{x:17,y:22},{x:18,y:22}]],open:[["yes","yes",""],["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","yes"],["no","no","no"],["no","no","no"]],offset:{north:{x:0,y:0},east:{x:2,y:2}}},
+			east_south:{size:{x:3,y:2},tiles:[[{x:16,y:3},{x:17,y:3},{x:18,y:3}],[{x:16,y:4},{x:17,y:4},{x:18,y:4}]],open:[["yes","yes","yes"],["yes","yes","yes"]],skip:[["no","no","no"],["no","no","no"]],offset:{east:{x:0,y:2},south:{x:1,y:1}}},
+			west_south:{size:{x:3,y:3},tiles:[[{},{x:20,y:20},{}],[{x:19,y:21},{x:20,y:21},{x:21,y:21}],[{x:19,y:22},{x:20,y:22},{x:21,y:22}]],open:[["","yes",""],["yes","yes","yes"],["yes","yes","yes"]],skip:[["yes","no","yes"],["no","no","no"],["no","no","no"]],offset:{west:{x:0,y:1},south:{x:1,y:2}}},
+			north_west:{size:{x:3,y:3},tiles:[[{},{x:19,y:18},{x:20,y:18}],[{x:18,y:19},{x:19,y:19},{x:20,y:19}],[{x:18,y:20},{x:19,y:20},{}]],open:[["","yes","yes"],["yes","yes","yes"],["yes","yes",""]],skip:[["yes","no","no"],["no","no","no"],["no","no","yes"]],offset:{north:{x:1,y:0},west:{x:0,y:2}}}
+		};
+		temperate.tile.terrain.road.diag_straight = {
+			west_southeast:{size:{x:2,y:2},tiles:[[{x:5,y:19},{x:6,y:19}],[{x:5,y:20},{}]],open:[["yes","yes"],["yes",""]],skip:[["no","no"],["no","yes"]],offset:{west:{x:0,y:0},southeast:{x:1,y:1}}},
+			west_northeast:{size:{x:2,y:2},tiles:[[{x:16,y:12},{}],[{x:16,y:13},{x:17,y:13}]],open:[["yes",""],["yes","yes"]],skip:[["no","yes"],["no","no"]],offset:{west:{x:0,y:1},northeast:{x:1,y:0}}},
+			east_northwest:{size:{x:2,y:2},tiles:[[{},{x:11,y:15}],[{x:10,y:16},{x:11,y:16}]],open:[["","yes"],["yes","yes"]],skip:[["yes","no"],["no","no"]],offset:{east:{x:1,y:1},northwest:{x:0,y:0}}},
+			east_southwest:{size:{x:2,y:2},tiles:[[{x:18,y:5},{x:19,y:5}],[{},{x:19,y:6}]],open:[["yes","yes"],["","yes"]],skip:[["no","no"],["yes","no"]],offset:{east:{x:1,y:0},southwest:{x:0,y:1}}},
+			south_northwest:{size:{x:2,y:2},tiles:[[{},{x:17,y:16}],[{x:16,y:17},{x:17,y:17}]],open:[["","yes"],["yes","yes"]],skip:[["yes","no"],["no","no"]],offset:{south:{x:0,y:1},northwest:{x:0,y:0}}},
+			south_northeast:{size:{x:2,y:2},tiles:[[{x:16,y:7},{}],[{x:16,y:8},{x:17,y:8}]],open:[["yes",""],["yes","yes"]],skip:[["no","yes"],["no","no"]],offset:{south:{x:0,y:1},northeast:{x:1,y:0}}},
+			north_southeast:{size:{x:2,y:2},tiles:[[{x:16,y:15},{x:17,y:15}],[{x:16,y:16},{}]],open:[["yes","yes"],["yes",""]],skip:[["no","no"],["no","yes"]],offset:{north:{x:0,y:0},southeast:{x:1,y:1}}},
+			north_southwest:{size:{x:2,y:2},tiles:[[{x:19,y:0},{x:20,y:0}],[{},{x:20,y:1}]],open:[["yes","yes"],["","yes"]],skip:[["no","no"],["yes","no"]],offset:{north:{x:1,y:0},southwest:{x:0,y:1}}},
+			east_south_northwest:{size:{x:2,y:2},tiles:[[{},{x:16,y:13}],[{x:15,y:14},{x:16,y:14}]],open:[["","yes"],["yes","yes"]],skip:[["yes","no"],["no","no"]],offset:{east:{x:1,y:1},south:{x:0,y:1},northwest:{x:0,y:0}}},
+			north_east_southwest:{size:{x:2,y:2},tiles:[[{x:21,y:20},{x:22,y:20}],[{},{x:22,y:21}]],open:[["yes","yes"],["","yes"]],skip:[["no","no"],["yes","no"]],offset:{north:{x:0,y:0},east:{x:1,y:0},southwest:{x:0,y:1}}},
+			west_south_northeast:{size:{x:2,y:2},tiles:[[{x:19,y:2},{}],[{x:19,y:3},{x:20,y:3}]],open:[["yes",""],["yes","yes"]],skip:[["no","yes"],["no","no"]],offset:{west:{x:0,y:1},south:{x:1,y:1},northeast:{x:1,y:0}}},
+			north_west_southeast:{size:{x:2,y:2},tiles:[[{x:21,y:0},{x:22,y:0}],[{x:21,y:1},{}]],open:[["yes","yes"],["yes",""]],skip:[["no","no"],["no","yes"]],offset:{north:{x:0,y:0},west:{x:0,y:1},southeast:{x:1,y:1}}}
+		}
+		
+		temperate.tile.terrain["ridge"] = {end:{}, straight:{}, diagonal:{}, curve:{}, multi:{}};
+		
+		temperate.tile.terrain["river"] = {end:{}, straight:{}, diagonal:{}, curve:{}, multi:{}};
+		
+		
 		
 		temperate.tile.newTile = function(i){
 				var tile;
@@ -243,24 +307,273 @@ For personal and educational use only.
 			
 			};
 		
+		temperate.tile.selectRoadSegment = function (source_direction){
+			var list = [];
+			switch(source_direction){
+				case "north":
+				case 0:
+					list = [temperate.tile.terrain.road.straight.north_south1, temperate.tile.terrain.road.straight.north_south2, temperate.tile.terrain.road.straight.north_south3, temperate.tile.terrain.road.straight.north_south4, temperate.tile.terrain.road.curve.west_south, temperate.tile.terrain.road.curve.east_south]; 
+					return list[rand(list.length)];
+					break;
+				case "west":
+				case 1:
+					list = [temperate.tile.terrain.road.straight.west_east1, temperate.tile.terrain.road.straight.west_east2, temperate.tile.terrain.road.straight.west_east3, temperate.tile.terrain.road.straight.west_east4, temperate.tile.terrain.road.straight.west_east5, temperate.tile.terrain.road.curve.north_east, temperate.tile.terrain.road.curve.east_south];
+					return list[rand(list.length)];
+					break;
+				case "east":
+				case 2:
+					list = [temperate.tile.terrain.road.straight.west_east1, temperate.tile.terrain.road.straight.west_east2, temperate.tile.terrain.road.straight.west_east3, temperate.tile.terrain.road.straight.west_east4, temperate.tile.terrain.road.straight.west_east5, temperate.tile.terrain.road.curve.west_south, temperate.tile.terrain.road.curve.north_west];
+					return list[rand(list.length)];
+					break;
+				case "south":
+				case 3:
+					list = [temperate.tile.terrain.road.straight.north_south1, temperate.tile.terrain.road.straight.north_south2, temperate.tile.terrain.road.straight.north_south3, temperate.tile.terrain.road.straight.north_south4, temperate.tile.terrain.road.curve.north_east, temperate.tile.terrain.road.curve.north_west];
+					return list[rand(list.length)];
+					break;
+				case "northeast":
+					list = [];
+					return list[rand(list.length)];
+					break;
+				case "northwest":
+					list = [];
+					return list[rand(list.length)];
+					break;
+				case "southeast":
+					list = [];
+					return list[rand(list.length)];
+					break;
+				case "southwest":
+					list = [];
+					return list[rand(list.length)];
+					break;
+			}
+		}
+		
+		temperate.tile.selectRoadEnd = function (direction){
+			switch(direction){
+				case "north":
+				case 0://north
+					return temperate.tile.terrain.road.end.end_south;
+				case "west":
+				case 1://west
+					return temperate.tile.terrain.road.end.end_east;
+				case "east":
+				case 2://east
+					return temperate.tile.terrain.road.end.west_end;
+				case "south":
+				case 3://south
+					return temperate.tile.terrain.road.end.north_end;
+			}
+		}
+		
+		temperate.tile.build_road = function (remaining_count, previous_direction, prev_x, prev_y){
+			var attempt = {current:0,max:10};
+			var new_road_piece, new_road_x, new_road_y;
+			//Loop until finding a piece that fits, or until the max attempt count is reached
+			while(attempt.current <= attempt.max){
+				if(remaining_count == 0 || attempt.current == -1){
+					//Select corresponding road end
+					new_road_piece = temperate.tile.selectRoadEnd(previous_direction);
+				} else {
+					//Select New Road Tile Set
+					new_road_piece = temperate.tile.selectRoadSegment(previous_direction);
+				}
+				//Find the new top left X,Y location for the road piece on the map
+				new_road_x = prev_x; 
+				new_road_y = prev_y;
+				//console.log("before: " + new_road_x + "," + new_road_y);
+				switch(previous_direction){
+					case "north":
+						new_road_y -= (1 + new_road_piece.offset.south.y);
+						new_road_x -= new_road_piece.offset.south.x;
+						break;
+					case "south":
+						new_road_y += (1 + new_road_piece.offset.north.y);
+						new_road_x -= new_road_piece.offset.north.x;
+						break;
+					case "west":
+						new_road_y -= new_road_piece.offset.east.y;
+						new_road_x -= (1 + new_road_piece.offset.east.x);
+						break;
+					case "east":
+						new_road_y -= new_road_piece.offset.west.y
+						new_road_x += (1 + new_road_piece.offset.west.x);
+						break;
+				}
+				//Check that location and see if the new road piece fits there
+				console.log("build_road: " + new_road_x + "," + new_road_y);
+				var check = check_placement_area(new_road_piece, new_road_x, new_road_y);
+				console.log("builder: check: " + check);
+				if(check == "clear"){
+					for(var y = 0; y < new_road_piece.size.y; y++){
+						for(var x = 0; x < new_road_piece.size.x; x++){
+							if(new_road_piece.skip[y][x] == "no"){
+								map.tiles[y+new_road_y][x+new_road_x].type = "road";
+								map.tiles[y+new_road_y][x+new_road_x].tileimg = new_road_piece.tiles[y][x];
+								map.tiles[y+new_road_y][x+new_road_x].open =  new_road_piece.open[y][x];
+							}
+						}
+					}
+					
+					if(remaining_count == 0 || attempt.current == -1){
+						return "true"
+					} else {
+						//Decrement remaining_count
+						remaining_count--;
+						//call this function again for the other direction, record the result.
+						var next_piece, next_direction, next_x, next_y;
+						var direction_list = Object.keys(new_road_piece.offset)
+						for(var index = 0; index < direction_list.length; index++){
+							if(direction_list[index] != get_opposite_direction(previous_direction)){
+								next_direction = direction_list[index];
+								next_x = new_road_x + new_road_piece.offset[next_direction].x;
+								next_y = new_road_y + new_road_piece.offset[next_direction].y;
+								//console.log("builder: next:" + next_direction + " " + next_x + "," + next_y);
+								next_piece = temperate.tile.build_road(remaining_count, next_direction, next_x, next_y);
+							}
+						}
+						//if the result is "true", return "true" as well. That means we're done here.
+						if(next_piece == "true"){
+							//console.log("chosen piece:" + new_road_piece.tiles[0][0].x + "," + new_road_piece.tiles[0][0].y);
+							return "true";
+						} else {//if the result is "false", undo changes and go back to looping.
+							for(var y = 0; y < new_road_piece.size.y; y++){
+								for(var x = 0; x < new_road_piece.size.x; x++){
+									if(new_road_piece.skip[y][x] == "no"){
+										var new_grass = temperate.tile.newTile(1);
+										map.tiles[y+new_road_y][x+new_road_x].type = new_grass.type;
+										map.tiles[y+new_road_y][x+new_road_x].tileimg = new_grass.tileimg;
+										map.tiles[y+new_road_y][x+new_road_x].open =  new_grass.open;
+									}
+								}
+							}
+						}
+						
+					}
+				} else {
+					//if attempt.current is -1, return false
+					if(attempt.current == -1){
+						return "false";
+					//if attempt.current is equal to attempt.max, set attempt.current to -1
+					} else if(attempt.current == attempt.max){
+						attempt.current = -1;
+					//if attempt.current is less than attempt.max, increment by 1
+					} else {
+						attempt.current++;
+					}
+				}
+			}
+		}
+		
+		
+		
 		temperate.tile.gen_map = function(){
 			var try_count = {current:0,max:10};
+			var placable;
 		//Add Ridges
 			
 		//Add Rivers
 			
 		//Add Roads
-			
+			var road_count = rand(5) + 2;
+			console.log("road count: " + road_count);
+			for(var i = 0; i < road_count; i++){
+				var edge_or_center = rand(2); //0: edge, 1: center
+				var direction = rand(4); //0:north, 1:west, 2:east, 3:south
+				var segment_count = rand(15) + 5;
+				var tmpx, tmpy, tmpmax_x, tmpmax_y, start_piece;
+				placable = "false"
+				try_count.current = 0;
+				while(placable == "false"){
+					//console.log("while: " + i + "," + try_count.current);
+					if(edge_or_center == 0){
+						start_piece = temperate.tile.selectRoadSegment(direction);
+						switch(direction){
+							case 0://North
+								tmpy = 0;
+								tmpx = rand(map.size.x - start_piece.size.x);
+								break;
+							case 1://West
+								tmpy = rand(map.size.y - start_piece.size.y);
+								tmpx = 0;
+								break;
+							case 2://East
+								tmpy = rand(map.size.y - start_piece.size.y);
+								tmpx = map.size.x - start_piece.size.x; 
+								break;
+							case 3://South
+								tmpy = map.size.y - start_piece.size.y;
+								tmpx = rand(map.size.x - start_piece.size.x);
+								break;
+						}
+					} else {
+						start_piece = temperate.tile.selectRoadEnd(direction);
+						tmpx = rand(map.size.x - (start_piece.size.x+3)) + 3;
+						tmpy = rand(map.size.y - (start_piece.size.y+3)) + 3;
+						console.log("starting piece at: " + direction + tmpx + "," + tmpy);
+					}
+					var check = check_placement_area(start_piece, tmpx, tmpy);
+					if(check == "clear"){
+						for(var y = 0; y < start_piece.size.y; y++){
+							for(var x = 0; x < start_piece.size.x; x++){
+								if(start_piece.skip[y][x] == "no"){
+									map.tiles[y+tmpy][x+tmpx].type = "road";
+									map.tiles[y+tmpy][x+tmpx].tileimg = start_piece.tiles[y][x];
+									map.tiles[y+tmpy][x+tmpx].open =  start_piece.open[y][x];
+								}
+							}
+						}
+						
+						var next_segment_count = segment_count - 1;
+						var next_direction = get_opposite_direction(direction);
+						var next_x = tmpx + start_piece.offset[next_direction].x;
+						var next_y = tmpy + start_piece.offset[next_direction].y;
+						//console.log("next piece: " + next_direction + " " + next_x + "," + next_y);
+						var next_placable = temperate.tile.build_road(next_segment_count, next_direction, next_x, next_y);
+						
+						if(next_placable == "true"){
+							console.log("successfully placed road: " + i);
+							placable = "true";
+						} else {
+							console.log ("failed to place road " + i + ", no room!");
+							for(var y = 0; y < start_piece.size.y; y++){
+								for(var x = 0; x < start_piece.size.x; x++){
+									if(start_piece.skip[y][x] == "no"){
+										var new_grass = temperate.tile.newTile(1);
+										map.tiles[y+tmpy][x+tmpx].type = new_grass.type;
+										map.tiles[y+tmpy][x+tmpx].tileimg = new_grass.tileimg;
+										map.tiles[y+tmpy][x+tmpx].open =  new_grass.open;
+									}
+								}
+							}
+						}
+						
+					} else {
+						if(try_count.current == try_count.max){
+							try_count.current = -1;
+							break;
+						}
+					}
+					
+					try_count.current++;
+				}
+				if(try_count.current == -1){
+					try_count.current = 0;
+					console.log("skipped road " + i + ", no space");
+					break;
+				}
+				
+			}
 		//Add Villages
 			
 		//Add Trees
 			
 		//Add Decorations
 			//Debri
-			var debri_count = rand(10);
+			var debri_count = rand(10) + 5;
 			console.log("debri count: " + debri_count);
 			for(var i = 0; i < debri_count; i++){
-				var placable = "false";
+					placable = "false";
 				var debri = tiles.terrain.debri[rand(tiles.terrain.debri.length)];
 				var tmpx, tmpy, tmpmaxx, tmpmaxy;
 				while(placable == "false"){
@@ -268,15 +581,9 @@ For personal and educational use only.
 					tmpy = rand(map.size.y - debri.size.y);
 					tmpmaxy = tmpy + debri.size.y;
 					tmpmaxx = tmpx + debri.size.x;
-					var blocked = "false";
-					for(var y = 0; y+tmpy < tmpmaxy; y++){
-						for(var x = 0; x+tmpx < tmpmaxx; x++){
-							if(map.tiles[y+tmpy][x+tmpx].type != "grass"){
-								blocked = "true";
-							}
-						}
-					}
-					if(blocked == "false"){
+					
+					var check = check_placement_area(debri, tmpx, tmpy);
+					if(check == "clear"){
 						try_count.current = 0;
 						placable = "true";
 					} else {
@@ -285,6 +592,7 @@ For personal and educational use only.
 							break;
 						}
 					}
+					
 					try_count.current++;
 				}
 				if(try_count.current == -1){
@@ -300,12 +608,12 @@ For personal and educational use only.
 					}
 				}
 			}
-			
+			//End Debri
 			//Rocks
-			var rock_count = rand(10);
+			var rock_count = rand(10) + 5;
 			console.log("rock count: " + rock_count);
 			for(var i = 0; i < rock_count; i++){
-				var placable = "false";
+					placable = "false";
 				var rock = tiles.terrain.rock[rand(tiles.terrain.rock.length)];
 				var tmpx, tmpy, tmpmaxx, tmpmaxy;
 				while(placable == "false"){
@@ -313,16 +621,9 @@ For personal and educational use only.
 					tmpy = rand(map.size.y - rock.size.y);
 					tmpmaxy = tmpy + rock.size.y;
 					tmpmaxx = tmpx + rock.size.x;
-					var blocked = "false";
 					
-					for(var y = 0; y+tmpy < tmpmaxy; y++){
-						for(var x = 0; x+tmpx < tmpmaxx; x++){
-							if(map.tiles[y+tmpy][x+tmpx].type != "grass"){
-								blocked = "true";
-							}
-						}
-					}
-					if(blocked == "false"){
+					var check = check_placement_area(rock, tmpx, tmpy);
+					if(check == "clear"){
 						try_count.current = 0;
 						placable = "true";
 					} else {
@@ -331,6 +632,7 @@ For personal and educational use only.
 							break;
 						}
 					}
+					
 					try_count.current++;
 				}
 				
@@ -340,13 +642,17 @@ For personal and educational use only.
 				} else {
 					for(var y = 0; y+tmpy < tmpmaxy; y++){
 						for(var x = 0; x+tmpx < tmpmaxx; x++){
-							map.tiles[y+tmpy][x+tmpx].type = "rock";
-							map.tiles[y+tmpy][x+tmpx].tileimg = rock.tiles[y][x];
-							map.tiles[y+tmpy][x+tmpx].open = rock.open[y][x];
+							if(rock.skip[y][x] == "no"){
+								map.tiles[y+tmpy][x+tmpx].type = "rock";
+								map.tiles[y+tmpy][x+tmpx].tileimg = rock.tiles[y][x];
+								map.tiles[y+tmpy][x+tmpx].open = rock.open[y][x];
+							}
 						}
 					}
 				}
 			}
+			//End Rocks
+			
 		}
 		
 		temperate.validate_input = function(){
@@ -441,7 +747,11 @@ For personal and educational use only.
 		}
 		if(e.key == "0"){
 			//Debug messages for on demand console logging go here
-			
+			if(debug_state == "off"){
+				debug_state = "on";
+			} else {
+				debug_state = "off";
+			}
 		}
 	}
 	function keyUpHandler(e){
@@ -510,13 +820,11 @@ For personal and educational use only.
 			view.size.height = Math.floor(twod.canvas.height / (tiles.size));
 			view.size.width = Math.floor(twod.canvas.width / (tiles.size));
 			
+			buffer_canvas.style.height = (view.size.height+2) * (tiles.size) + px;
+			buffer_canvas.style.width  = (view.size.width+2) * (tiles.size) + px;
+			buffer_twod.canvas.height = (view.size.height+2) * (tiles.size);
+			buffer_twod.canvas.width = (view.size.width+2) * (tiles.size);
 			
-			buffer_canvas.style.height = (view.size.height+1) * (tiles.size) + px;
-			buffer_canvas.style.width  = (view.size.width+1) * (tiles.size) + px;
-			buffer_twod.canvas.height = (view.size.height+1) * (tiles.size);
-			buffer_twod.canvas.width = (view.size.width+1) * (tiles.size);
-
-		
 			updateview(0,"reset");
 			drawmap();
 			copybuffer();
@@ -650,14 +958,21 @@ For personal and educational use only.
 	}
 	
 	function drawmap(){
-		for(var y = 0; y <= view.size.height; y++){
-			for(var x = 0; x <= view.size.width; x++){
+		for(var y = 0; y <= view.size.height+1; y++){
+			for(var x = 0; x <= view.size.width+1; x++){
 				if(y + view.loc.y < map.size.y && x + view.loc.x < map.size.x && x + view.loc.x >= 0 && y + view.loc.y >= 0){
 					drawtile(map.tiles[y+view.loc.y][x+view.loc.x],x,y);
 				} else {
 					drawfiller(x,y);
 				}
 			}
+		}
+		if(debug_state == "on"){
+			buffer_twod.beginPath();
+			buffer_twod.rect(0,0,buffer_twod.canvas.width,buffer_twod.canvas.height);
+			buffer_twod.strokeStyle="orange";
+			buffer_twod.stroke();
+			buffer_twod.closePath();
 		}
 	}
 	
@@ -673,6 +988,15 @@ For personal and educational use only.
 		if(tile.tib >= tib.min){
 			buffer_twod.drawImage(sprites,tib.img[tile.tibver][tile.tib].x*tiles.size,tib.img[tile.tibver][tile.tib].y*tiles.size,tiles.size,tiles.size,x*tiles.size,y*tiles.size,tiles.size,tiles.size);
 		}
+		
+		if(debug_state == "on"){
+			buffer_twod.beginPath();
+			buffer_twod.rect(x*tiles.size,y*tiles.size,tiles.size,tiles.size);
+			buffer_twod.strokeStyle="black";
+			buffer_twod.stroke();
+			buffer_twod.closePath();
+			buffer_twod.fillText(tile.loc.x + "," + tile.loc.y, x*tiles.size,(y*tiles.size)+10);
+		}
 	}
 	
 	function drawfiller(x,y){
@@ -684,7 +1008,6 @@ For personal and educational use only.
 	}
 	
 	function copybuffer(){
-	//	twod.drawImage(buffer_canvas, view.pxloc.x, view.pxloc.y, twod.canvas.width, twod.canvas.height, 0, 0, view.size.width*tiles.size, view.size.height*tiles.size );
 		twod.drawImage(buffer_canvas, view.pxloc.x, view.pxloc.y, twod.canvas.width, twod.canvas.height, 0, 0, twod.canvas.width, twod.canvas.height );
 	}
 	
@@ -1004,6 +1327,51 @@ For personal and educational use only.
 	
 	function expand_menu_height(input){
 		menu.style.height = dimensions[input].y + px;
+	}
+	
+	function check_placement_area(object, target_x, target_y){
+		var max_x = target_x + object.size.x;
+		var max_y = target_y + object.size.y;
+		var blocked = "false";
+		for(var y = 0; y+target_y < max_y; y++){
+			if(y+target_y < map.size.y && y+target_y >= 0){
+				for(var x = 0; x+target_x < max_x; x++){
+					if(x+target_x < map.size.x && x+target_x >= 0){
+						if(object.skip[y][x] == "no"){
+							if(map.tiles[y+target_y][x+target_x].type != "grass"){
+								blocked = "true";
+							}
+						}
+					} else {
+						blocked = "true";
+					}
+				}
+			} else{  
+				blocked = "true";
+			}
+		}
+		if(blocked == "false"){
+			return "clear";
+		} else {
+			return "blocked";
+		}
+	}
+	
+	function get_opposite_direction(direction){
+		switch(direction){
+			case "north":
+			case 0:
+				return "south";
+			case "west":
+			case 1:
+				return "east";
+			case "east":
+			case 2:
+				return "west";
+			case "south":
+			case 3:
+				return "north";
+		}
 	}
 	
 //End Functions
