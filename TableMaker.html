@@ -109,7 +109,7 @@ To use:</br>
 	
 	var input_values = {"inches":"", "centimeters":""};
 	
-	var table = {"header":"<div class=\"chart_table\"> \n{| class=\"wikitable\" \n|- \n",
+	var table = {"header":"<div class=\"chart_table\"> \n{| class=\"wikitable\" \n|+ Sizes (CHANGE) \n|- \n",
 				 "new_line":"\n",
 				 "row_head":"! ",
 				 "row_value":"| ",
@@ -189,6 +189,9 @@ To use:</br>
 	}
 	
 	function run(){
+		//Reset the read buffers for repeat use!
+		input_values = {"inches":"", "centimeters":""};
+		//Read in the data!
 		read_input();
 		write_to_inches_output();
 		write_to_centimeters_output();
@@ -204,7 +207,6 @@ To use:</br>
 				return value_field.value;
 			});
 		});
-		console.log(row_list_array);
 		
 		input_values.inches = row_list_array
 		
@@ -224,7 +226,6 @@ To use:</br>
 			}
 			row_counter++;
 		}
-		console.log(centimeter_array);
 		
 		input_values.centimeters = centimeter_array;
 	}
@@ -241,11 +242,13 @@ To use:</br>
 	
 	function write_to_inches_output(){
 		let inches_formatted_text = format_wiki_table_data(input_values.inches);
+		inches_formatted_text = inches_formatted_text.replace("CHANGE", "Inches");
 		inches_output.value = inches_formatted_text;
 	}
 	
 	function write_to_centimeters_output(){
 		let centimeters_formatted_text = format_wiki_table_data(input_values.centimeters);
+		centimeters_formatted_text = centimeters_formatted_text.replace("CHANGE", "Centimeters");
 		centimeters_output.value = centimeters_formatted_text;
 		
 	}
