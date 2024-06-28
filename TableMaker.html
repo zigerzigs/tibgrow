@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<title>Table Maker</title>
+	
+	<style>
+		.value_field {
+			width: 100px;
+			margin: 3px 3px 3px 3px;
+			display: inline-block;
+		}
+		
+		label.value_field {
+			display: inline-block;
+		}
+	</style>
+</head>
+
+<body>
+<div style="width:600px;">
+This is the beta version of the WikiTable Formatter by ziger.</br> 
+This version is functional, but lacks any error checking.</br>
+Use at your own risk</br></br>
+To use:</br>
+1) Select your desired sizes and measurements. Click Create Inputs.</br>
+2) Fill in all input fields. Field left empty will crash the script.</br>
+3) Click Run. The formatted WikiTables will appear in the text areas.</br>
+4) Copy the formatted text out of this page and into the WikiTable Template on the wiki.</br></br>
+</div>
+
+<div id="settings">
+	<div id="columns">
+	<label>Sizes:</label></br>
+	<label>Mini</label><input id="mini" type="checkbox" checked="true" value="Mini"> 
+	<label>Small</label><input id="small" type="checkbox" checked="true" value="Small"> 
+	<label>Medium</label><input id="medium" type="checkbox" checked="true" value="Medium"> 
+	<label>Large</label><input id="large" type="checkbox" checked="true" value="Large"> 
+	<label>XL</label><input id="xl" type="checkbox" checked="true" value="XL"> 
+	<label>One Size</label><input id="onesize" type="checkbox" value="One Size"> 
+	</div>
+	<div id="rows">
+	</br>
+	<label>Measurements:</label></br>
+	<label>Head</label><input id="head" type="checkbox" checked="true" value="Head">
+	<label>Shaft</label><input id="shaft" type="checkbox" checked="true" value="Shaft">
+	<label>Knot</label><input id="knot" type="checkbox" checked="true" value="Knot">
+	<label>Medial Ring</label><input id="medial_ring" type="checkbox" checked="true" value="Medial Ring">
+	<label>Base</label><input id="base" type="checkbox" checked="true" value="Base">
+	<label>Usable Length</label><input id="usable_length" type="checkbox" checked="true" value="Usable Length">
+	<label>Total Length</label><input id="total_length" type="checkbox" checked="true" value="Total Length">
+	</div>
+	<div id="buttons">
+	</br>
+	<button onclick="setup_input()">Create Inputs</button> <button onclick="run()">Run</button>
+	
+	</div>
+</div>
+
+<div id="input">
+	
+</div>
+
+<div id="output">
+	<div id="inches_container" style="display:inline-block;">
+	<label>Inches</label></br>
+	<textarea id="inches_output_text" rows="50" cols="50"></textarea>
+	</div>
+	<div id="centimeters_container" style="display:inline-block;">
+	<label>Centimeters</label></br>
+	<textarea id="centimeters_output_text" rows="50" cols="50"></textarea>
+	</div>
+</div>
+
+
+</body>
+
+<script>
+	/*
+	This is the beta version of the WikiTable formatter by Ziger.
+	This version lacks any error checking what so ever. Use at your own risk.
+	*/
+	
+	
+	var input_area = document.getElementById("input");
+	
+	var sizes = {"mini":"", "small":"", "medium":"", "large":"", "xl":"", "onesize":""};
+	var metrics = {"head":"", "shaft":"", "knot":"", "medial_ring":"", "base":"", "usable":"", "total":""};
+	
+	sizes.mini = document.getElementById("mini");
+	sizes.small = document.getElementById("small");
+	sizes.medium = document.getElementById("medium");
+	sizes.large = document.getElementById("large");
+	sizes.xl = document.getElementById("xl");
+	sizes.onesize = document.getElementById("onesize");
+	//console.log(sizes);
+	
+	metrics.head = document.getElementById("head");
+	metrics.shaft = document.getElementById("shaft");
+	metrics.knot = document.getElementById("knot");
+	metrics.medial_ring = document.getElementById("medial_ring");
+	metrics.base = document.getElementById("base");
+	metrics.usable = document.getElementById("usable_length");
+	metrics.total = document.getElementById("total_length");
+	
+	var inches_output = document.getElementById("inches_output_text");
+	var centimeters_output = document.getElementById("centimeters_output_text");
+	
+	var input_values = {"inches":"", "centimeters":""};
+	
+	var table = {"header":"<div class=\"chart_table\"> \n{| class=\"wikitable\" \n|- \n",
+				 "new_line":"\n",
+				 "row_head":"! ",
+				 "row_value":"| ",
+				 "divider":"|-\n",
+				 "end":"|}\n</div>"
+		};
+	
+	function setup_input(){
+		//Clear the Input Div 
+		input_area.innerHTML = "";
+		//Read the sizes list and create the fields for them.
+		var header_div = document.createElement('div');
+		header_div.className = "row";
+		
+		var dimensions = document.createElement('label');
+		dimensions.innerText = "Dimensions";
+		dimensions.value = "Dimensions";
+		dimensions.className = "value_field";
+		dimensions.style.width = "200px";
+		
+		header_div.appendChild(dimensions);
+		
+		var size_count = 0;
+		
+		for(let size in sizes){
+			if (sizes[size].checked == true){
+				let label = document.createElement('label');
+				label.innerText = sizes[size].value;
+				label.value = sizes[size].value;
+				label.className = "value_field";
+				label.style.margin = "3px 6px 3px 6px";
+				label.style.textAlign = "center";
+				header_div.appendChild(label);
+				size_count++;
+			}
+		}
+		
+		input_area.appendChild(header_div);
+		
+		//For each metric, make a text input field for each size available.
+		for(let metric in metrics){
+			if (metrics[metric].checked == true){
+				if(metrics[metric].value === "Usable Length" || metrics[metric].value === "Total Length"){
+					let new_div = create_input_div(metrics[metric].value, size_count);
+					input_area.appendChild(new_div);
+				} else {
+					let diameter_div = create_input_div((metrics[metric].value + " Diameter"), size_count);
+					let circumference_div = create_input_div((metrics[metric].value + " Circumference"), size_count);
+					input_area.appendChild(diameter_div);
+					input_area.appendChild(circumference_div);
+				}
+			}
+		}
+	}
+	
+	function create_input_div(header_text, field_count){
+		let metric_div = document.createElement('div');
+		metric_div.className = "row";
+		
+		let row_header = document.createElement('label');
+		row_header.innerText = header_text;
+		row_header.value = header_text;
+		row_header.className = "value_field";
+		row_header.style.width = "200px";
+		metric_div.appendChild(row_header);
+		
+		let counter = field_count;
+		while(counter > 0){
+			let text_field = document.createElement('input');
+			text_field.type = "text";
+			text_field.className = "value_field";
+			metric_div.appendChild(text_field);
+			counter--;
+		}
+		
+		return metric_div;
+	}
+	
+	function run(){
+		read_input();
+		write_to_inches_output();
+		write_to_centimeters_output();
+	}
+	
+	function read_input(){
+		//Read the 'row' class divs and 'value_field' class elements into input_values.inches
+		let row_list = input_area.querySelectorAll(".row");
+		
+		let row_list_array = Array.from(row_list).map(function(row_div){
+			let value_fields = row_div.querySelectorAll(".value_field");
+			return Array.from(value_fields).map(function(value_field){
+				return value_field.value;
+			});
+		});
+		console.log(row_list_array);
+		
+		input_values.inches = row_list_array
+		
+		let centimeter_array = [0];
+		centimeter_array.length = row_list_array.length;
+		centimeter_array[0] = row_list_array[0];
+		let row_counter = 1;
+		while(row_counter < row_list_array.length){
+			let current_row = row_list_array[row_counter];
+			centimeter_array[row_counter] = [0];
+			centimeter_array[row_counter].length = current_row.length;
+			centimeter_array[row_counter][0] = current_row[0];
+			let field_counter = 1;
+			while(field_counter < current_row.length){
+				centimeter_array[row_counter][field_counter] = convert_inches_to_centimeters(current_row[field_counter]);
+				field_counter++;
+			}
+			row_counter++;
+		}
+		console.log(centimeter_array);
+		
+		input_values.centimeters = centimeter_array;
+	}
+	
+	function convert_inches_to_centimeters(in_value){
+		let int_value = 1000 * in_value;
+		let converted_int = int_value * 2540;
+		let decimal_value_unrounded = converted_int/10000;
+		let rounded_value = Math.round(decimal_value_unrounded);
+		let final_value = rounded_value/100;
+		return final_value;
+		
+	}
+	
+	function write_to_inches_output(){
+		let inches_formatted_text = format_wiki_table_data(input_values.inches);
+		inches_output.value = inches_formatted_text;
+	}
+	
+	function write_to_centimeters_output(){
+		let centimeters_formatted_text = format_wiki_table_data(input_values.centimeters);
+		centimeters_output.value = centimeters_formatted_text;
+		
+	}
+	
+	function format_wiki_table_data(input_array){
+	//use value.toFixed(2) to ensure 2 decimal places, where value is the variable.
+		let formatted_text = "";
+		formatted_text = formatted_text.concat(table.header);
+		
+		let field_counter = 0;
+		let row_counter = 1;
+		
+		//The header row gets special treatment due to it being all labels and not data cells.
+		while(field_counter < input_array[0].length){
+			formatted_text = formatted_text.concat(table.row_head + input_array[0][field_counter] + table.new_line);
+			field_counter++;
+		}
+		formatted_text = formatted_text.concat(table.divider);
+		field_counter = 1;
+		
+		//Handle the rest of the rows per normal, with the first field being handled differently.
+		while(row_counter < input_array.length){
+			formatted_text = formatted_text.concat(table.row_head + input_array[row_counter][0] + table.new_line);
+			while(field_counter < input_array[row_counter].length){
+				let value = input_array[row_counter][field_counter] * 1;
+				value = value.toFixed(2);
+				formatted_text = formatted_text.concat(table.row_value + value + table.new_line);
+				field_counter++;
+			}
+			formatted_text = formatted_text.concat(table.divider);
+			field_counter = 1;
+			row_counter++;
+		}
+		formatted_text = formatted_text.concat(table.end);
+		
+		return formatted_text;
+	}
+	
+</script>
