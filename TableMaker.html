@@ -150,18 +150,34 @@ To use:</br>
 		input_area.appendChild(header_div);
 		
 		//For each metric, make a text input field for each size available.
+		let diameters = [];
+		let circumferences = [];
+		let lengths = [];
+		
 		for(let metric in metrics){
 			if (metrics[metric].checked == true){
 				if(metrics[metric].value === "Usable Length" || metrics[metric].value === "Total Length"){
 					let new_div = create_input_div(metrics[metric].value, size_count);
-					input_area.appendChild(new_div);
+					lengths.push(new_div);
 				} else {
 					let diameter_div = create_input_div((metrics[metric].value + " Diameter"), size_count);
 					let circumference_div = create_input_div((metrics[metric].value + " Circumference"), size_count);
-					input_area.appendChild(diameter_div);
-					input_area.appendChild(circumference_div);
+					diameters.push(diameter_div);
+					circumferences.push(circumference_div);
 				}
 			}
+		}
+		//console.log(diameters);
+		//Now add them to the display in the correct order.
+		//input_area.appendChild(new_div);
+		for(let diam in diameters){
+			input_area.appendChild(diameters[diam]);
+		}
+		for(circ in circumferences){
+			input_area.appendChild(circumferences[circ]);
+		}
+		for(len in lengths){
+			input_area.appendChild(lengths[len]);
 		}
 	}
 	
