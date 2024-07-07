@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<title>Table Maker</title>
+	
+	<style>
+		.value_field {
+			width: 100px;
+			margin: 3px 3px 3px 3px;
+			display: inline-block;
+		}
+		
+		label.value_field {
+			display: inline-block;
+		}
+		
+		.input_area{
+			border-style: solid;
+		}
+		
+	</style>
+</head>
+
+<body>
+<div style="width:600px;">
+This is the beta version of the WikiTable Formatter by ziger.</br> 
+This version is functional, but lacks any error checking.</br>
+Use at your own risk</br></br>
+To use:</br>
+1) Select your desired number of columns and rows, and input metrics, then click Create Inputs.</br></br>
+2) Fill in all input fields. Field left empty will crash the script. The top row and first field in every row are labels.</br></br>
+3) Click Run. The formatted WikiTables will appear in the text areas.</br></br>
+4) Copy the formatted text out of this page and into the WikiTable Template on the wiki.</br></br>
+</div>
+
+<div id="settings">
+	<div><label>Column Count: </label> <input id="col_count" type="text"> <label>Row Count: </label> <input id="row_count" type="text"></div></br>
+	<div><label>Input Units: </label> <label>Inches</label><input id="unit_inches" name="units" type="radio"> <label>Centimeters</label><input id="unit_centimeters" name="units" type="radio"> <label>Both</label><input id="unit_both" name="units" type="radio"></div>
+</div></br>
+
+<div id="buttons"><button onclick="setup_input()">Create Inputs</button> <button onclick="run()">Run</button></div>
+
+<div id="input">
+	<div id="inches_input" style="display: inline-block;"> </div>
+	<div id="centimeters_input" style="display: inline-block;"> </div>
+</div>
+
+<div id="output">
+	<div id="inches_container" style="display:inline-block;">
+	<label>Inches</label></br>
+	<textarea id="inches_output_text" rows="50" cols="50"></textarea>
+	</div>
+	<div id="centimeters_container" style="display:inline-block;">
+	<label>Centimeters</label></br>
+	<textarea id="centimeters_output_text" rows="50" cols="50"></textarea>
+	</div>
+</div>
+
+</body>
+
+<script>
+	//Create HTML element objects
+		//Text Input Areas
+		var input_area = {"inches":"", "centimeters":""};
+		input_area.inches = document.getElementById("inches_input");
+		input_area.centimeters = document.getElementById("centimeters_input");
+	
+		var output_area = {"inches":"", "centimeters":""};
+		output_area.inches = document.getElementById("inches_output_text");
+		output_area.centimeters = document.getElementById("centimeters_output_text");
+	
+		//Row-Column Inputs
+		var column_count_input = document.getElementById("col_count");
+		var row_count_input = document.getElementById("row_count");
+		
+		//Radio Inputs
+		var input_units = {"inches":"", "centimeters":"", "both":""};
+		input_units.inches = document.getElementById("unit_inches");
+		input_units.centimeters = document.getElementById("unit_centimeters");
+		input_units.both = document.getElementById("unit_both");
+		
+		//Text Outputs
+		var inches_output = document.getElementById("inches_output_text");
+		var centimeters_output = document.getElementById("centimeters_output_text");
+		
+		
+	//End HTML Element objects
+	
+	//Create Global Variables
+		//Data Tables
+		var values = {"inches":[0], "centimeters":[0]};
+		
+		var settings = {"columns":0, "rows":0, "input":""};
+		
+		
+	//End Global Variables
+	
+	//Create Reference Tables
+	var table = {"header":"<div class=\"chart_table\"> \n{| class=\"wikitable\" \n|+ Sizes (CHANGE) \n|- \n",
+				 "new_line":"\n",
+				 "row_head":"! ",
+				 "row_value":"| ",
+				 "divider":"|-\n",
+				 "end":"|}\n</div>"
+		};
+	
+	//End Reference Tables
+	
+	//Functions below this point
+	
+	function setup_input(){
+		//Clear the input areas
+		input_area.inches.innerHTML = "";
+		input_area.centimeters.innerHTML = "";
+		
+		//Read in columns, rows, and input types
+		settings.columns = column_count_input.value;
+		settings.rows = row_count_input.value;
+		settings.input = get_unit_type();
+		
+		//Determine which input areas need to be filled (inches, centimeters or both) and then populate them.
+		if(settings.input === "both"){
+			input_area.inches.appendChild(create_input_html(settings.rows, settings.columns, "Inches"));
+			input_area.centimeters.appendChild(create_input_html(settings.rows, settings.columns, "Centimeters"));
+		} else if(settings.input === "inches"){
+			input_area.inches.appendChild(create_input_html(settings.rows, settings.columns, "Inches"));
+		} else {
+			input_area.centimeters.appendChild(create_input_html(settings.rows, settings.columns, "Centimeters"));
+		}
+		
+	}
+	
+	function run(){
+		//Read the input areas
+		if(settings.input === "both"){
+			values.inches = read_input(input_area.inches);
+			values.centimeters = read_input(input_area.centimeters);
+		} else if(settings.input === "inches"){
+			values.inches = read_input(input_area.inches);
+			generate_centimeters();
+		} else {
+			values.centimeters = read_input(input_area.centimeters);
+			generate_inches();
+		}
+		
+		write_to_inches_output();
+		write_to_centimeters_output();
+		
+	}
+	
+	
+	
+	//Utility Functions
+	
+	function get_unit_type(){
+		if(input_units.inches.checked){
+			return "inches";
+		}
+		if(input_units.centimeters.checked){
+			return "centimeters";
+		}
+		if(input_units.both.checked){
+			return "both";
+		}
+	}
+	
+	function create_input_html(rows, columns, unit_label){
+		let div = document.createElement('div');
+		div.className = "input_area";
+		
+		let label_div = document.createElement('div');
+		label_div.innerText = unit_label;
+		label_div.style.textAlign = "center";
+		div.appendChild(label_div);
+		
+		let row_counter = 0;
+		while(row_counter < rows){
+			let row_div = document.createElement('div');
+			row_div.className = "row";
+			let col_counter = 0;
+			while(col_counter < columns){
+				let textfield = document.createElement('input');
+				textfield.type = "text";
+				textfield.className = "value_field";
+				row_div.appendChild(textfield);
+				col_counter++;
+			}
+			div.appendChild(row_div);
+			row_counter++;
+		}
+		
+		return div;
+	}
+	
+	function read_input(input_area_div){
+		//get the list of values.
+		let row_list = input_area_div.querySelectorAll(".row");
+		
+		let row_list_array = Array.from(row_list).map(function(row_div){
+			let value_fields = row_div.querySelectorAll(".value_field");
+			return Array.from(value_fields).map(function(value_field){
+				return value_field.value;
+			});
+		});
+		
+		return row_list_array;
+	}
+	
+	function convert_inches_to_centimeters(in_value){
+		let int_value = 1000 * in_value;
+		let converted_int = int_value * 2540;
+		let decimal_value_unrounded = converted_int/10000;
+		let rounded_value = Math.round(decimal_value_unrounded);
+		let final_value = rounded_value/100;
+		return final_value;
+		
+	}
+	
+	function convert_centimeters_to_inches(in_value){
+		let int_value = 0.393701 * in_value;
+		//let converted_int = int_value * 3937;
+		//let decimal_value_unrounded = converted_int/100000;
+		let decimal_value_unrounded = int_value *100
+		let rounded_value = Math.round(decimal_value_unrounded);
+		let final_value = rounded_value/100;
+		return final_value;
+	}
+	
+	function generate_centimeters(){
+		//values.centimeters = [0];
+		values.centimeters.length = values.inches.length;
+		values.centimeters[0] = values.inches[0];
+		
+		let row_counter = 1;
+		while(row_counter < values.centimeters.length){
+			values.centimeters[row_counter] = [0];
+			values.centimeters[row_counter].length = values.inches[row_counter].length;
+			values.centimeters[row_counter][0] = values.inches[row_counter][0];
+			let col_counter = 1;
+			while(col_counter < values.centimeters[row_counter].length){
+				values.centimeters[row_counter][col_counter] = convert_inches_to_centimeters(values.inches[row_counter][col_counter]);
+				
+				col_counter++;
+			}
+			
+			row_counter++;
+		}
+		console.log(values);
+	}
+	
+	function generate_inches(){
+		//values.inches = [0];
+		values.inches.length = values.centimeters.length;
+		values.inches[0] = values.centimeters[0];
+		
+		let row_counter = 1;
+		while(row_counter < values.inches.length){
+			values.inches[row_counter] = [0];
+			values.inches[row_counter].length = values.centimeters[row_counter].length;
+			values.inches[row_counter][0] = values.centimeters[row_counter][0];
+			let col_counter = 1;
+			while(col_counter < values.inches[row_counter].length){
+				values.inches[row_counter][col_counter] = convert_centimeters_to_inches(values.centimeters[row_counter][col_counter]);
+				
+				col_counter++;
+			}
+			
+			row_counter++;
+		}
+		console.log(values);
+	}
+	
+	function write_to_inches_output(){
+		let inches_formatted_text = format_wiki_table_data(values.inches);
+		inches_formatted_text = inches_formatted_text.replace("CHANGE", "Inches");
+		inches_output.value = inches_formatted_text;
+	}
+	
+	function write_to_centimeters_output(){
+		let centimeters_formatted_text = format_wiki_table_data(values.centimeters);
+		centimeters_formatted_text = centimeters_formatted_text.replace("CHANGE", "Centimeters");
+		centimeters_output.value = centimeters_formatted_text;
+		
+	}
+	
+	function format_wiki_table_data(input_array){
+	//use value.toFixed(2) to ensure 2 decimal places, where value is the variable.
+		let formatted_text = "";
+		formatted_text = formatted_text.concat(table.header);
+		
+		let field_counter = 0;
+		let row_counter = 1;
+		
+		//The header row gets special treatment due to it being all labels and not data cells.
+		while(field_counter < input_array[0].length){
+			formatted_text = formatted_text.concat(table.row_head + input_array[0][field_counter] + table.new_line);
+			field_counter++;
+		}
+		formatted_text = formatted_text.concat(table.divider);
+		field_counter = 1;
+		
+		//Handle the rest of the rows per normal, with the first field being handled differently.
+		while(row_counter < input_array.length){
+			formatted_text = formatted_text.concat(table.row_head + input_array[row_counter][0] + table.new_line);
+			while(field_counter < input_array[row_counter].length){
+				let value = input_array[row_counter][field_counter] * 1;
+				value = value.toFixed(2);
+				formatted_text = formatted_text.concat(table.row_value + value + table.new_line);
+				field_counter++;
+			}
+			formatted_text = formatted_text.concat(table.divider);
+			field_counter = 1;
+			row_counter++;
+		}
+		formatted_text = formatted_text.concat(table.end);
+		
+		return formatted_text;
+	}
+	
+	
+</script>
